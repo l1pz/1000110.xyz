@@ -51,7 +51,10 @@ Pick the first unchecked task. One task per session. Log a 2-line handoff at the
 - Later, on the blog: table-of-contents widget card beside a post (wide screens), build-time `<noscript>` posts
 
 ## Phase 3: Tools (the full catalogue and build order live in `TOOLS.md`)
-- [ ] Tools registry + `/tools/` listing + the first ten tools, in the order of `TOOLS.md` (includes the encode/decode playground and the JSON formatter)
+- [x] Tools registry + `/tools/` listing, case converter, encode/decode playground
+- [ ] Tools batch A, generators and crypto: hash generator, password and passphrase generator, UUID / ULID / NanoID (implementation batch: one branch, one commit per tool, each tool still its own page; see `TOOLS.md`)
+- [ ] Tools batch B, text and data: JSON formatter, text counter, diff checker, regex tester with explanation
+- [ ] Tools batch C, calculators: CIDR / subnet calculator, timestamp and time zone converter, color converter and contrast checker
 - [ ] Image to ASCII / dither studio
 - [ ] Fluid dynamics experiment (currently an empty stub)
 - [ ] Scratchpad (see `TOOLS.md`, Writing / life)

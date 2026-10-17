@@ -56,25 +56,32 @@ Ask the user before adding any browser dependency. Heavy ones (ffmpeg, PDF, HEIC
 - Candidates for later: Base32 (TOTP secrets), Base58, Punycode, quoted-printable. Unicode escapes belong to "Escape / unescape strings".
 
 ## First ten (build order)
-Cheap, popular, no dependency.
+Cheap, popular, no dependency. Built in **implementation batches** grouped by shape: one branch and PR per batch, one commit and tests per tool. The batches are only a way of working; on the site every tool stays its own page, registry entry, route and chunk.
 - [x] 0. Registry + `/tools/` listing + one tool page shape (done with the case converter as the first tool)
 - [x] 1. Encode / decode playground: binary, hex, Base64, ROT13, URL, HTML entities, Morse [T]
+
+**Batch A: generators and crypto** (Web Crypto, string out with a copy button)
 - [ ] 2. Hash generator: MD5, SHA-1/256/512, HMAC [API]
 - [ ] 3. Password and passphrase generator with entropy meter [API]
+- [ ] UUID / ULID / NanoID generator [API] (pulled in from "Encode / decode / crypto")
+
+**Batch B: text and data** (text in, live result out; the regex explainer goes last and moves to its own session if it grows)
 - [ ] 4. JSON formatter, validator, minifier [T]
-- [ ] 5. IP range / CIDR / subnet calculator, IPv4 and IPv6 [T]
-- [ ] 6. Unix timestamp and time zone converter [API]
-- [ ] 7. Regex tester with explanation [T]
-- [ ] 8. Color converter (HEX, RGB, HSL) and contrast checker [T]
 - [ ] 9. Case converter [T] (done) and text counter (left)
 - [ ] 10. Diff checker [T]
+- [ ] 7. Regex tester with explanation [T]
+
+**Batch C: calculators** (labelled fields in, result table out)
+- [ ] 5. IP range / CIDR / subnet calculator, IPv4 and IPv6 [T]
+- [ ] 6. Unix timestamp and time zone converter [API]
+- [ ] 8. Color converter (HEX, RGB, HSL) and contrast checker [T]
 
 Existing Phase 3 items map here: playground = 1, JSON formatter = 4, scratchpad = Writing / life below. Image to ASCII / dither studio and the fluid dynamics experiment stay in `TASKS.md`.
 
 ## Encode / decode / crypto
 - [ ] Caesar / Vigenere / Atbash / XOR cipher tool [T]
 - [ ] JWT decoder [T]
-- [ ] UUID / ULID / NanoID generator [API]
+- [ ] UUID / ULID / NanoID generator [API] (batch A)
 - [ ] AES encrypt/decrypt with a passphrase [API]
 - [ ] Text to binary "hidden message" maker, tied to the binary footers [T]
 - [ ] Bcrypt hash and verify [LIB]

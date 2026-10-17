@@ -22,7 +22,9 @@
     margin-bottom: 0.2em;
 }
 
-.tool textarea {
+.tool textarea,
+.tool input[type="text"],
+.tool input[type="number"] {
     display: block;
     width: 100%;
     padding: 0.5em 1ch;
@@ -36,7 +38,9 @@
     user-select: text;
 }
 
-.tool textarea:focus {
+.tool textarea:focus,
+.tool input[type="text"]:focus,
+.tool input[type="number"]:focus {
     outline: 1px solid var(--yellow);
     border-color: var(--yellow);
 }
@@ -88,7 +92,9 @@
         min-height: 44px;
     }
 
-    .tool textarea {
+    .tool textarea,
+    .tool input[type="text"],
+    .tool input[type="number"] {
         font-size: 16px;
     }
 }

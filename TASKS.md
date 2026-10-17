@@ -51,7 +51,10 @@ Pick the first unchecked task. One task per session. Log a 2-line handoff at the
 - Later, on the blog: table-of-contents widget card beside a post (wide screens), build-time `<noscript>` posts
 
 ## Phase 3: Tools (the full catalogue and build order live in `TOOLS.md`)
-- [ ] Tools registry + `/tools/` listing + the first ten tools, in the order of `TOOLS.md` (includes the encode/decode playground and the JSON formatter)
+- [x] Tools registry + `/tools/` listing, case converter, encode/decode playground
+- [x] Tools batch A, generators and crypto: hash generator, password and passphrase generator, UUID / ULID / NanoID (implementation batch: one branch, one commit per tool, each tool still its own page; see `TOOLS.md`)
+- [ ] Tools batch B, text and data: JSON formatter, text counter, diff checker, regex tester with explanation
+- [ ] Tools batch C, calculators: CIDR / subnet calculator, timestamp and time zone converter, color converter and contrast checker
 - [ ] Image to ASCII / dither studio
 - [ ] Fluid dynamics experiment (currently an empty stub)
 - [ ] Scratchpad (see `TOOLS.md`, Writing / life)
@@ -143,3 +146,7 @@ Needs a short plan shown in the terminal before any code. Storage is decided: op
 ### Session 13 (2026-10-11)
 - Done (branch `feat/encode-decode`): encode/decode tool (`tools/encode/`: binary, hex, base64, rot13, url, html, morse; variants, swap button, hex fallback for non-UTF-8); `statusLine` and `buttonRow` added to `ui.ts`. `npm run check` passes; used in the browser, no overflow at 360 and 390 (iframes). Real phone untested.
 - Next: `TOOLS.md` first ten, item 2 (hash generator).
+
+### Session 14 (2026-10-17)
+- Done (branch `feat/tools-a-generators`): tools now built in implementation batches (DECISIONS.md, TASKS.md, TOOLS.md regrouped); batch A: `hash` (MD5 written by hand, SHA via Web Crypto, HMAC), `password` (password + passphrase, entropy meter, word list), `uuid` (UUID v4/v7, ULID, NanoID); shared `random.ts`, `lineInput`/`numberInput`/`toggleButton` in `ui.ts`. `npm run check` passes (206 tests).
+- Not done: looked at in the browser (the Chrome extension was not connected), so 360/390 layout is unchecked. Next: batch B (JSON formatter, text counter, diff checker, regex tester).

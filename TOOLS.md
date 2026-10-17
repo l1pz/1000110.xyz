@@ -66,10 +66,10 @@ Cheap, popular, no dependency. Built in **implementation batches** grouped by sh
 - [x] UUID / ULID / NanoID generator [API] (pulled in from "Encode / decode / crypto")
 
 **Batch B: text and data** (text in, live result out; the regex explainer goes last and moves to its own session if it grows)
-- [ ] 4. JSON formatter, validator, minifier [T]
-- [ ] 9. Case converter [T] (done) and text counter (left)
-- [ ] 10. Diff checker [T]
-- [ ] 7. Regex tester with explanation [T]
+- [x] 4. JSON formatter, validator, minifier [T]
+- [x] 9. Case converter [T] and text counter
+- [x] 10. Diff checker [T]
+- [x] 7. Regex tester with explanation [T]
 
 **Batch C: calculators** (labelled fields in, result table out)
 - [ ] 5. IP range / CIDR / subnet calculator, IPv4 and IPv6 [T]

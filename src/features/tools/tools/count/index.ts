@@ -1,0 +1,26 @@
+import { textInput } from "../../ui";
+import { rows } from "./count";
+
+export function mount(el: HTMLElement): void {
+    const { wrap, input } = textInput("input", "type or paste text");
+    input.rows = 10;
+    const table = document.createElement("dl");
+    table.className = "stats";
+
+    const update = () => {
+        table.replaceChildren(
+            ...rows(input.value).flatMap(([label, value]) => {
+                const dt = document.createElement("dt");
+                dt.className = "dim";
+                dt.textContent = label;
+                const dd = document.createElement("dd");
+                dd.textContent = value;
+                return [dt, dd];
+            }),
+        );
+    };
+
+    input.addEventListener("input", update);
+    el.append(wrap, table);
+    update();
+}

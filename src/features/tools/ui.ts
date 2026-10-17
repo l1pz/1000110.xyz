@@ -20,6 +20,17 @@ export function textInput(label: string, placeholder = ""): { wrap: HTMLElement;
     return { wrap, input };
 }
 
+/** A labelled single-line text input. */
+export function lineInput(label: string, placeholder = ""): { wrap: HTMLElement; input: HTMLInputElement } {
+    const wrap = el("label", "field");
+    const text = el("span", "dim", { textContent: label });
+    const input = el("input", "", { type: "text", placeholder, spellcheck: false });
+    input.autocapitalize = "off";
+    input.autocomplete = "off";
+    wrap.append(text, input);
+    return { wrap, input };
+}
+
 /** A labelled read-only result box with a copy button. */
 export function outputBox(label: string): { wrap: HTMLElement; set: (text: string) => void } {
     const wrap = el("div", "field");

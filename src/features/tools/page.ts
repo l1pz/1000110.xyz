@@ -2,6 +2,7 @@ import { bootPage } from "../../core/boot";
 import { escapeHtml } from "../../core/html";
 import { isoDate, renderPage } from "../../core/shell";
 import { crumbTrail, getPage } from "../../core/site";
+import { mountPalette } from "./palette";
 import { getPublicTool, loadTool, publicTools } from "./registry";
 import { splitHash } from "./state";
 import { CATEGORIES, type Cleanup, type ToolMeta } from "./types";
@@ -40,7 +41,7 @@ export function renderIndex(list: ToolMeta[], today: string): string {
         page: tools(),
         command: "ls tools/",
         date: today,
-        body: `<p class="dim">total ${list.length}</p>\n${toolRows(list)}`,
+        body: `<p class="dim">total ${list.length}</p>\n<div class="tool"><div class="buttons"><button class="btn" type="button" data-palette>search tools (/)</button></div></div>\n${toolRows(list)}`,
         secret: "swiss army knife",
     });
 }
@@ -127,6 +128,7 @@ export async function mount(el: Element): Promise<void> {
         status.update();
     };
 
+    mountPalette(publicTools());
     window.addEventListener("hashchange", show);
     show();
 }

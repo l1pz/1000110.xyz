@@ -111,6 +111,16 @@
     margin: 0;
 }
 
+/* Long labels and values (time zones): label above value so 41 columns never overflow. */
+.tool .stats.wide {
+    grid-template-columns: 1fr;
+    gap: 0;
+}
+
+.tool .stats.wide dt {
+    margin-top: 0.6em;
+}
+
 /* Diff */
 .tool .diff,
 .tool .regex-marked,

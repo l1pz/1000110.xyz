@@ -54,7 +54,7 @@ Pick the first unchecked task. One task per session. Log a 2-line handoff at the
 - [x] Tools registry + `/tools/` listing, case converter, encode/decode playground
 - [x] Tools batch A, generators and crypto: hash generator, password and passphrase generator, UUID / ULID / NanoID (implementation batch: one branch, one commit per tool, each tool still its own page; see `TOOLS.md`)
 - [x] Tools batch B, text and data: JSON formatter, text counter, diff checker, regex tester with explanation
-- [ ] Tools batch C, calculators: CIDR / subnet calculator, timestamp and time zone converter, color converter and contrast checker
+- [x] Tools batch C, calculators: CIDR / subnet calculator, timestamp and time zone converter, color converter and contrast checker
 - [ ] Image to ASCII / dither studio
 - [ ] Fluid dynamics experiment (currently an empty stub)
 - [ ] Scratchpad (see `TOOLS.md`, Writing / life)
@@ -154,3 +154,7 @@ Needs a short plan shown in the terminal before any code. Storage is decided: op
 ### Session 15 (2026-10-17)
 - Done (branch `feat/tools-b-text-data`): batch B as four tools: `json` (format/minify/validate, sort keys; own `findError` scanner gives line and column because current V8 reports no position), `count`, `diff` (LCS line diff, 4M-cell cap), `regex` (flags, highlighted matches, groups, token-by-token `explain`). `npm run check` passes (242 tests).
 - Not done: looked at in the browser (Chrome extension not connected), so 360/390 layout is unchecked. Regex runs on the main thread: a catastrophic pattern like `(a+)+$` can freeze the tab (worker with timeout is a possible follow-up). Next: batch C.
+
+### Session 16 (2026-10-17)
+- Done (branch `feat/tools-c-calculators`): batch C as three tools: `cidr` (IPv4 + IPv6 via BigInt, /31 and /32 rules, special range names), `time` (unix s/ms or date string to UTC, local and IANA zones via Intl, DST tested), `color` (HEX/RGB/HSL, WCAG contrast; ratio is floored so a failing 4.499 never shows as 4.50). `.stats.wide` stacks label over value for long rows. `npm run check` passes (273 tests).
+- Not done: looked at in the browser, so 360/390 layout is unchecked. IPv6 with embedded IPv4 (`::ffff:1.2.3.4`) and dotted netmasks (`/255.255.255.0`) are not parsed. Next: image to ASCII / dither studio.

@@ -101,7 +101,7 @@ export function calculate(input: string): Subnet | string {
     const ip = parseIp(addr);
     if (!ip) return "not an IPv4 or IPv6 address";
     const bits = BITS[ip.version];
-    let prefix = bits;
+    let prefix: number = bits;
     if (len !== undefined) {
         if (!/^\d{1,3}$/.test(len) || Number(len) > bits) return `prefix must be 0-${bits}`;
         prefix = Number(len);

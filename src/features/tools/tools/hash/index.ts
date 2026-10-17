@@ -1,4 +1,4 @@
-import { lineInput, modePicker, outputBox, textInput } from "../../ui";
+import { buttonRow, lineInput, linkButton, modePicker, outputBox, textInput, toolState } from "../../ui";
 import { ALGORITHMS, type AlgorithmId, hashAll, hashText } from "./digest";
 
 type Pick = AlgorithmId | "all";
@@ -10,13 +10,21 @@ const CASES = [
 ] as const;
 
 export function mount(el: HTMLElement): void {
-    let pick: Pick = "sha256";
-    let upper = false;
+    const state = toolState("hash");
+    let pick = state.get(
+        "a",
+        "sha256",
+        PICKS.map((p) => p.id),
+    ) as Pick;
+    let upper = state.get("u", "0", ["0", "1"]) === "1";
     let latest = 0;
 
-    const { wrap, input } = textInput("input", "type or paste text");
+    // Text only: a dropped file would be decoded as text and hash the wrong bytes (binary files come later).
+    const { wrap, input } = textInput("input", "type or paste text", { drop: false });
+    state.bindText("i", input, { primary: true });
+    // The HMAC key is a secret: it is never put in a link.
     const key = lineInput("HMAC key (optional)", "empty = plain hash");
-    const out = outputBox("hash");
+    const out = outputBox("hash", 6, { send: true });
 
     const update = async () => {
         const mine = ++latest;
@@ -32,13 +40,16 @@ export function mount(el: HTMLElement): void {
         key.wrap,
         modePicker(PICKS, pick, (id) => {
             pick = id;
+            state.set("a", id);
             void update();
         }),
-        modePicker(CASES, "lower", (id) => {
+        modePicker(CASES, upper ? "upper" : "lower", (id) => {
             upper = id === "upper";
+            state.set("u", upper ? "1" : "0");
             void update();
         }),
         out.wrap,
+        buttonRow(linkButton(state)),
     );
     input.addEventListener("input", () => void update());
     key.input.addEventListener("input", () => void update());

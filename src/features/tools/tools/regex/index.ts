@@ -1,4 +1,4 @@
-import { buttonRow, lineInput, statusLine, textInput, toggleButton } from "../../ui";
+import { buttonRow, lineInput, linkButton, statusLine, textInput, toggleButton, toolState } from "../../ui";
 import { explain } from "./explain";
 import { FLAGS, type Match, RegexError, runRegex, segments } from "./run";
 
@@ -23,9 +23,13 @@ function describeMatches(matches: Match[]): string {
 }
 
 export function mount(el: HTMLElement): void {
-    const flags = new Set(["g"]);
+    const state = toolState("regex");
+    const known: string[] = FLAGS.map((f) => f.id);
+    const flags = new Set([...state.get("f", "g", (v) => [...v].every((c) => known.includes(c)))]);
     const pattern = lineInput("pattern", "e.g. (\\d+)-(\\d+)");
     const text = textInput("test text", "text to search");
+    state.bindText("p", pattern.input);
+    state.bindText("t", text.input, { primary: true });
     const marked = node("pre", "regex-marked");
     const list = node("pre", "regex-matches");
     const steps = node("pre", "regex-explain");
@@ -75,9 +79,16 @@ export function mount(el: HTMLElement): void {
                 toggleButton(f.label, flags.has(f.id), (on) => {
                     if (on) flags.add(f.id);
                     else flags.delete(f.id);
+                    state.set(
+                        "f",
+                        FLAGS.filter((x) => flags.has(x.id))
+                            .map((x) => x.id)
+                            .join(""),
+                    );
                     update();
                 }),
             ),
+            linkButton(state),
         ),
         text.wrap,
         marked,

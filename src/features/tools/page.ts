@@ -3,13 +3,14 @@ import { escapeHtml } from "../../core/html";
 import { isoDate, renderPage } from "../../core/shell";
 import { crumbTrail, getPage } from "../../core/site";
 import { getPublicTool, loadTool, publicTools } from "./registry";
+import { splitHash } from "./state";
 import { CATEGORIES, type Cleanup, type ToolMeta } from "./types";
 
 export type Route = { view: "index" } | { view: "tool"; id: string };
 
-/** `/tools/` is the list, `/tools/#<id>` is one tool. */
+/** `/tools/` is the list, `/tools/#<id>` is one tool; `#<id>?k=v` carries the tool's state (see `state.ts`). */
 export function parseRoute(hash: string): Route {
-    const id = decodeURIComponent(hash.replace(/^#/, ""));
+    const { id } = splitHash(hash);
     return id === "" ? { view: "index" } : { view: "tool", id };
 }
 

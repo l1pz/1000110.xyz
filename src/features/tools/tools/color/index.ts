@@ -1,4 +1,4 @@
-import { button, buttonRow, lineInput, statusLine } from "../../ui";
+import { button, buttonRow, lineInput, linkButton, statusLine, toolState } from "../../ui";
 import { contrastRows, conversionRows, parseColor, type Rgb, toHex } from "./color";
 
 function table(rows: [string, string][]): Node[] {
@@ -23,6 +23,8 @@ export function mount(el: HTMLElement): void {
     // converter
     const one = lineInput("color", "#fabd2f, rgb(250, 189, 47) or hsl(42, 95%, 58%)");
     one.input.value = "#fabd2f";
+    const state = toolState("color");
+    state.bindText("c", one.input);
     const oneStatus = statusLine();
     const oneSwatch = swatch();
     const oneTable = document.createElement("dl");
@@ -42,6 +44,8 @@ export function mount(el: HTMLElement): void {
     fg.input.value = "#ebdbb2";
     const bg = lineInput("background color", "#282828");
     bg.input.value = "#282828";
+    state.bindText("f", fg.input);
+    state.bindText("b", bg.input);
     const twoStatus = statusLine();
     const sample = document.createElement("div");
     sample.className = "swatch sample";
@@ -77,7 +81,7 @@ export function mount(el: HTMLElement): void {
         oneTable,
         fg.wrap,
         bg.wrap,
-        buttonRow(swap),
+        buttonRow(swap, linkButton(state)),
         twoStatus.node,
         sample,
         twoTable,

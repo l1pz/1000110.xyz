@@ -1,12 +1,18 @@
-import { buttonRow, statusLine, textInput, toggleButton } from "../../ui";
+import { buttonRow, linkButton, statusLine, textInput, toggleButton, toolState } from "../../ui";
 import { DiffTooBig, diffLines, summary } from "./diff";
 
 const MARK = { same: "  ", add: "+ ", del: "- " } as const;
 
 export function mount(el: HTMLElement): void {
-    const options = { ignoreCase: false, ignoreSpace: false };
+    const state = toolState("diff");
+    const options = {
+        ignoreCase: state.get("c", "0", ["0", "1"]) === "1",
+        ignoreSpace: state.get("s", "0", ["0", "1"]) === "1",
+    };
     const left = textInput("original", "old text");
     const right = textInput("changed", "new text");
+    state.bindText("a", left.input, { primary: true });
+    state.bindText("b", right.input);
     const result = document.createElement("pre");
     result.className = "diff";
     const status = statusLine();
@@ -36,16 +42,20 @@ export function mount(el: HTMLElement): void {
         left.wrap,
         right.wrap,
         buttonRow(
-            toggleButton("ignore case", false, (on) => {
+            toggleButton("ignore case", options.ignoreCase, (on) => {
                 options.ignoreCase = on;
+                state.set("c", on ? "1" : "0");
                 update();
             }),
-            toggleButton("ignore spaces", false, (on) => {
+            toggleButton("ignore spaces", options.ignoreSpace, (on) => {
                 options.ignoreSpace = on;
+                state.set("s", on ? "1" : "0");
                 update();
             }),
+            linkButton(state),
         ),
         result,
         status.node,
     );
+    update();
 }

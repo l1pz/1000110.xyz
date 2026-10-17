@@ -74,7 +74,19 @@
 }
 
 .tool .field > .btn {
-    margin-top: 0.6em;
+    margin: 0.6em 1ch 0 0;
+}
+
+.tool [hidden] {
+    display: none;
+}
+
+.tool .field > .buttons {
+    margin: 0.6em 0 0;
+}
+
+.tool .hint {
+    margin-top: 0.4em;
 }
 
 .tool .status {

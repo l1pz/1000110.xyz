@@ -36,6 +36,7 @@ export function loadTools(modules: Record<string, { meta?: unknown }>): ToolMeta
         if (meta.access !== undefined && meta.access !== "public" && meta.access !== "private") {
             fail(path, '`access` must be "public" or "private"');
         }
+        if (meta.pipe !== undefined && typeof meta.pipe !== "boolean") fail(path, "`pipe` must be true or false");
         if (meta.secret !== undefined && (typeof meta.secret !== "string" || meta.secret.length > SECRET_MAX)) {
             fail(path, `\`secret\` must be at most ${SECRET_MAX} characters`);
         }

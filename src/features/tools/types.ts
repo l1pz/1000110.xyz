@@ -31,6 +31,8 @@ export interface ToolMeta {
     summary: string;
     /** Defaults to `public`. */
     access?: Access;
+    /** The tool has one main text box, so other tools may "send" text to it. */
+    pipe?: boolean;
     /** Optional hidden binary message (at most 32 characters, like a blog post). */
     secret?: string;
 }

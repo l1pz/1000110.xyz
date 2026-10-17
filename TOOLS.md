@@ -61,9 +61,9 @@ Cheap, popular, no dependency. Built in **implementation batches** grouped by sh
 - [x] 1. Encode / decode playground: binary, hex, Base64, ROT13, URL, HTML entities, Morse [T]
 
 **Batch A: generators and crypto** (Web Crypto, string out with a copy button)
-- [ ] 2. Hash generator: MD5, SHA-1/256/512, HMAC [API]
-- [ ] 3. Password and passphrase generator with entropy meter [API]
-- [ ] UUID / ULID / NanoID generator [API] (pulled in from "Encode / decode / crypto")
+- [x] 2. Hash generator: MD5, SHA-1/256/512, HMAC [API]
+- [x] 3. Password and passphrase generator with entropy meter [API]
+- [x] UUID / ULID / NanoID generator [API] (pulled in from "Encode / decode / crypto")
 
 **Batch B: text and data** (text in, live result out; the regex explainer goes last and moves to its own session if it grows)
 - [ ] 4. JSON formatter, validator, minifier [T]

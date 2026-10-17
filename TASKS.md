@@ -53,7 +53,7 @@ Pick the first unchecked task. One task per session. Log a 2-line handoff at the
 ## Phase 3: Tools (the full catalogue and build order live in `TOOLS.md`)
 - [x] Tools registry + `/tools/` listing, case converter, encode/decode playground
 - [x] Tools batch A, generators and crypto: hash generator, password and passphrase generator, UUID / ULID / NanoID (implementation batch: one branch, one commit per tool, each tool still its own page; see `TOOLS.md`)
-- [ ] Tools batch B, text and data: JSON formatter, text counter, diff checker, regex tester with explanation
+- [x] Tools batch B, text and data: JSON formatter, text counter, diff checker, regex tester with explanation
 - [ ] Tools batch C, calculators: CIDR / subnet calculator, timestamp and time zone converter, color converter and contrast checker
 - [ ] Image to ASCII / dither studio
 - [ ] Fluid dynamics experiment (currently an empty stub)
@@ -150,3 +150,7 @@ Needs a short plan shown in the terminal before any code. Storage is decided: op
 ### Session 14 (2026-10-17)
 - Done (branch `feat/tools-a-generators`): tools now built in implementation batches (DECISIONS.md, TASKS.md, TOOLS.md regrouped); batch A: `hash` (MD5 written by hand, SHA via Web Crypto, HMAC), `password` (password + passphrase, entropy meter, word list), `uuid` (UUID v4/v7, ULID, NanoID); shared `random.ts`, `lineInput`/`numberInput`/`toggleButton` in `ui.ts`. `npm run check` passes (206 tests).
 - Not done: looked at in the browser (the Chrome extension was not connected), so 360/390 layout is unchecked. Next: batch B (JSON formatter, text counter, diff checker, regex tester).
+
+### Session 15 (2026-10-17)
+- Done (branch `feat/tools-b-text-data`): batch B as four tools: `json` (format/minify/validate, sort keys; own `findError` scanner gives line and column because current V8 reports no position), `count`, `diff` (LCS line diff, 4M-cell cap), `regex` (flags, highlighted matches, groups, token-by-token `explain`). `npm run check` passes (242 tests).
+- Not done: looked at in the browser (Chrome extension not connected), so 360/390 layout is unchecked. Regex runs on the main thread: a catastrophic pattern like `(a+)+$` can freeze the tab (worker with timeout is a possible follow-up). Next: batch C.

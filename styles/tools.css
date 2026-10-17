@@ -98,3 +98,44 @@
         font-size: 16px;
     }
 }
+
+/* Text counter */
+.tool .stats {
+    display: grid;
+    grid-template-columns: 15ch 1fr;
+    gap: 0.2em 2ch;
+    margin: 0 0 1.4em;
+}
+
+.tool .stats dd {
+    margin: 0;
+}
+
+/* Diff */
+.tool .diff,
+.tool .regex-marked,
+.tool .regex-matches,
+.tool .regex-explain {
+    margin: 0 0 1.4em;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: text;
+}
+
+.tool .diff-add {
+    color: var(--green);
+}
+
+.tool .diff-del {
+    color: var(--red);
+}
+
+.tool .diff-same {
+    color: var(--gray);
+}
+
+/* Regex */
+.tool .hit {
+    background: var(--yellow);
+    color: var(--bg);
+}

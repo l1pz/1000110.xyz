@@ -31,11 +31,49 @@ export function lineInput(label: string, placeholder = ""): { wrap: HTMLElement;
     return { wrap, input };
 }
 
+/** A labelled whole-number input; `get()` is the current value clamped to `[min, max]` (the box keeps what was typed). */
+export function numberInput(
+    label: string,
+    value: number,
+    min: number,
+    max: number,
+    onChange: () => void,
+): { wrap: HTMLElement; get: () => number } {
+    const wrap = el("label", "field");
+    const text = el("span", "dim", { textContent: `${label} (${min}-${max})` });
+    const input = el("input", "", {
+        type: "number",
+        value: String(value),
+        min: String(min),
+        max: String(max),
+        step: "1",
+    });
+    input.inputMode = "numeric";
+    input.addEventListener("input", onChange);
+    wrap.append(text, input);
+    return {
+        wrap,
+        get: () => Math.min(max, Math.max(min, Math.round(Number(input.value)) || min)),
+    };
+}
+
+/** A button that flips between on and off (`active` class) and reports the new state. */
+export function toggleButton(label: string, initial: boolean, onChange: (on: boolean) => void): HTMLButtonElement {
+    let on = initial;
+    const btn = button(label, () => {
+        on = !on;
+        btn.classList.toggle("active", on);
+        onChange(on);
+    });
+    btn.classList.toggle("active", on);
+    return btn;
+}
+
 /** A labelled read-only result box with a copy button. */
-export function outputBox(label: string): { wrap: HTMLElement; set: (text: string) => void } {
+export function outputBox(label: string, rows = 6): { wrap: HTMLElement; set: (text: string) => void } {
     const wrap = el("div", "field");
     const text = el("span", "dim", { textContent: label });
-    const box = el("textarea", "", { readOnly: true, rows: 6, spellcheck: false });
+    const box = el("textarea", "", { readOnly: true, rows, spellcheck: false });
     const copy = button("copy", async () => {
         try {
             await navigator.clipboard.writeText(box.value);

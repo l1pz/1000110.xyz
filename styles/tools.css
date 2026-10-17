@@ -111,6 +111,16 @@
     margin: 0;
 }
 
+/* Long labels and values (time zones): label above value so 41 columns never overflow. */
+.tool .stats.wide {
+    grid-template-columns: 1fr;
+    gap: 0;
+}
+
+.tool .stats.wide dt {
+    margin-top: 0.6em;
+}
+
 /* Diff */
 .tool .diff,
 .tool .regex-marked,
@@ -138,4 +148,19 @@
 .tool .hit {
     background: var(--yellow);
     color: var(--bg);
+}
+
+/* Color tool: a preview strip; its colors are set from the user's input. */
+.tool .swatch {
+    height: 3em;
+    margin: 0 0 1.4em;
+    border: 1px solid var(--gray);
+}
+
+.tool .swatch.sample {
+    display: flex;
+    align-items: center;
+    padding: 0 1ch;
+    overflow: hidden;
+    white-space: nowrap;
 }

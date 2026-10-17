@@ -72,9 +72,9 @@ Cheap, popular, no dependency. Built in **implementation batches** grouped by sh
 - [x] 7. Regex tester with explanation [T]
 
 **Batch C: calculators** (labelled fields in, result table out)
-- [ ] 5. IP range / CIDR / subnet calculator, IPv4 and IPv6 [T]
-- [ ] 6. Unix timestamp and time zone converter [API]
-- [ ] 8. Color converter (HEX, RGB, HSL) and contrast checker [T]
+- [x] 5. IP range / CIDR / subnet calculator, IPv4 and IPv6 [T]
+- [x] 6. Unix timestamp and time zone converter [API]
+- [x] 8. Color converter (HEX, RGB, HSL) and contrast checker [T]
 
 Existing Phase 3 items map here: playground = 1, JSON formatter = 4, scratchpad = Writing / life below. Image to ASCII / dither studio and the fluid dynamics experiment stay in `TASKS.md`.
 

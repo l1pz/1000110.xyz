@@ -25,6 +25,12 @@ html {
     font-kerning: none;
 }
 
+/* Scrollbars (page, text boxes, code blocks) follow the theme: a gray thumb on the page background */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--gray) var(--bg);
+}
+
 pre {
     font-family: var(--font);
     font-size: var(--font-size);

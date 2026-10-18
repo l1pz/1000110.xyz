@@ -48,6 +48,14 @@ export const pages: SitePage[] = [
         note: "work in progress",
         parent: "experiments",
     },
+    {
+        id: "theme",
+        path: "/theme/",
+        window: "theme",
+        name: "theme",
+        section: "theme",
+        pattern: "listing",
+    },
 ];
 
 export function getPage(id: string): SitePage {

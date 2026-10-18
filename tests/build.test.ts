@@ -14,6 +14,7 @@ describe("production build", () => {
         expect(existsSync("dist/index.html")).toBe(true);
         expect(existsSync("dist/blog/index.html")).toBe(true);
         expect(existsSync("dist/tools/index.html")).toBe(true);
+        expect(existsSync("dist/theme/index.html")).toBe(true);
         expect(existsSync("dist/experiments/index.html")).toBe(true);
         expect(existsSync("dist/experiments/fluiddynamics/index.html")).toBe(true);
     });
@@ -49,6 +50,16 @@ describe("production build", () => {
             expect(html, page.id).toContain('id="status"');
             expect(html, page.id).toContain("viewport-fit=cover");
             expect(html, page.id).toContain("<noscript>");
+        }
+    });
+
+    it("sets the saved theme before first paint, from a script in every page head", () => {
+        for (const page of pages) {
+            const html = readFileSync(`dist/${page.path.replace(/^\//, "")}index.html`, "utf8");
+            const head = html.slice(0, html.indexOf("</head>"));
+            expect(head, page.id).toMatch(/<script>[^<]*dataset\.theme[^<]*<\/script>/);
+            // Ahead of the stylesheet, so the attribute is set before the first paint.
+            expect(head.indexOf("dataset.theme"), page.id).toBeLessThan(head.indexOf("stylesheet"));
         }
     });
 

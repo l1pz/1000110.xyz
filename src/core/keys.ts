@@ -1,15 +1,18 @@
 /** The key vocabulary every page shares (DESIGN.md 8.4). Pure `keyAction`, DOM wiring in `bindKeys`. */
 import { getPage, type SitePage, windows } from "./site";
+import { cycleTheme } from "./theme";
 
 export type KeyAction =
     | { type: "window"; index: number }
     | { type: "scroll"; lines: number }
     | { type: "top" }
     | { type: "bottom" }
-    | { type: "up" };
+    | { type: "up" }
+    | { type: "theme" };
 
 /**
- * `1`-`9` go to that site window, `j`/`k` scroll, `g`/`G` jump to the top and bottom, `b` and Esc go up a level.
+ * `1`-`9` go to that site window, `j`/`k` scroll, `g`/`G` jump to the top and bottom, `b` and Esc go up a level,
+ * `t` switches to the next color theme.
  * `null` means "not ours, leave it to the browser" (space, PageUp, PageDown and the arrows already scroll).
  */
 export function keyAction(key: string, windowCount: number): KeyAction | null {
@@ -19,6 +22,7 @@ export function keyAction(key: string, windowCount: number): KeyAction | null {
     if (key === "g") return { type: "top" };
     if (key === "G") return { type: "bottom" };
     if (key === "b" || key === "Escape") return { type: "up" };
+    if (key === "t") return { type: "theme" };
     return null;
 }
 
@@ -43,6 +47,7 @@ export function bindKeys(page: SitePage, up?: () => void): void {
             window.scrollBy({ top: action.lines * line });
         } else if (action.type === "top") window.scrollTo(0, 0);
         else if (action.type === "bottom") window.scrollTo(0, document.documentElement.scrollHeight);
+        else if (action.type === "theme") cycleTheme();
         else if (up) up();
         else {
             const path = upPath(page);

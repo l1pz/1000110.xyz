@@ -42,6 +42,7 @@ describe("windowsHtml", () => {
             expect(html).toContain('href="/blog/">2:blog');
             expect(html).toContain('href="/tools/">3:tools');
             expect(html).toContain('href="/experiments/">4:exp');
+            expect(html).toContain('href="/theme/">5:theme');
         }
     });
 
@@ -53,6 +54,12 @@ describe("windowsHtml", () => {
 
     it("keeps the parent's window current on a child page", () => {
         expect(windowsHtml(getPage("fluiddynamics"))).toContain('class="win active" href="/experiments/">4:exp*</a>');
+    });
+});
+
+describe("theme window", () => {
+    it("is the fifth window and is current on its own page", () => {
+        expect(windowsHtml(getPage("theme"))).toContain('class="win active" href="/theme/">5:theme*</a>');
     });
 });
 
@@ -82,6 +89,10 @@ describe("keyAction", () => {
         expect(keyAction("Escape", 3)).toEqual({ type: "up" });
     });
 
+    it("t switches theme", () => {
+        expect(keyAction("t", 3)).toEqual({ type: "theme" });
+    });
+
     it("leaves other keys to the browser", () => {
         expect(keyAction(" ", 3)).toBeNull();
         expect(keyAction("ArrowDown", 3)).toBeNull();
@@ -94,5 +105,6 @@ describe("upPath", () => {
         expect(upPath(getPage("fluiddynamics"))).toBe("/experiments/");
         expect(upPath(getPage("blog"))).toBe("/");
         expect(upPath(getPage("home"))).toBeNull();
+        expect(upPath(getPage("theme"))).toBe("/");
     });
 });

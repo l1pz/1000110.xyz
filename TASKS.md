@@ -74,6 +74,7 @@ Pick the first unchecked batch. One branch per batch, one commit and tests per t
 - [ ] Gallery card, dither/ASCII <-> raw photo view, albums
 
 ## Phase 5: Polish
+- [x] Theme picker (user asked for it before U1b; branch `feat/theme-picker`): six themes as `[data-theme]` blocks in `theme.css`, `src/core/theme.ts`, `plugins/theme-boot.js` (no flash), `/theme/` page as window `5:theme` and the `t` key; no saved choice follows the system. Details in DESIGN.md 2b and DECISIONS.md.
 - [ ] "Oracle": a small model thinking out loud 24/7, streamed to a card. One generator on the server (llama.cpp, in-process via llama-cpp-python, FastAPI, SSE broadcast, ring buffer so new visitors see text at once, connection cap, heartbeat), no visitor input. Output must be coherent: test candidate models (SmolLM2-360M, Llama 3.2 1B, Qwen2.5 1.5B, Gemma 3 1B) before choosing; RAM budget ~1.5 GB, low CPU (nice 19, throttled tokens, optional pause when nobody watches), Docker mem/cpu limits, Traefik, canned-line fallback in the card
 - [ ] CRT scanline/glow toggle
 - [ ] Optional key-click sounds
@@ -172,3 +173,7 @@ Needs a short plan shown in the terminal before any code. Storage is decided: op
 ### Session 17 (2026-10-17)
 - Done (branch `feat/tools-u1`, stacked on `docs/tool-upgrades`): U1 plumbing. `state.ts` (hash query `#json?i=..&m=..`, remembered options in localStorage, text never stored, "copy link"), `files.ts` + paste button and text-file drop in `textInput`, "send to" (`pipe: true` in meta, sessionStorage handoff), `palette.ts` (`/` or Ctrl-K, plus a "search tools" button on the list). All 12 tools wired. `npm run check` passes (300 tests). Used in the browser at desktop and in 360 / 390 iframes: no overflow.
 - Not done: U1b (highlighting) is its own branch and session, as decided. Hash tool does not take dropped files yet (U2). Next: U1b, or U2.
+
+### Session 18 (2026-10-18)
+- Done (branch `feat/theme-picker`): color themes (gruvbox dark / light, amber crt, green phosphor, solarized dark, nord) with `auto` (follows the OS) as the default; `/theme/` page as window `5:theme`, `t` key, no-flash boot script in every head; tests for contrast per theme, CSS vs list, the boot script and the saved choice. Used in the browser: switching, saved across pages, 360 / 390 iframes with no overflow (status line with five windows checked at 320 / 360 / 390 with the touch rules injected; the `%` hides under 420px to make room).
+- Not done: real phone and `pointer: coarse` untested; `<meta name="color-scheme">` and tool example colors (Gruvbox hex as data in the color tool) unchanged. Next: U1b (highlighting; its token colors must use the theme variables so they follow every theme), or U2.

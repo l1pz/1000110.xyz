@@ -32,6 +32,14 @@ Native widgets bring their own look (light or blue, rounded, wrong font) and mus
 - Number inputs: native spinner arrows are hidden (`styles/tools.css`) and `numberInput` in `src/features/tools/ui.ts` draws `-` and `+` buttons instead (same look and 44px tap targets as every button).
 Still to handle when they first appear: `<select>` (prefer a `modePicker` button row; if a real select is needed, style it like `.tool input`), date, time and color pickers (prefer our own text field plus a parser), checkboxes (prefer `toggleButton`), file inputs (use drop zones and a `button`), `<details>`, `<dialog>` and `<progress>` (draw the meter as text, like the status line). Prefer a TUI-style widget made from our buttons over styling a native one; if you must keep the native one, add its rule here.
 
+### 2b. Color themes
+The nine variables in `styles/theme.css` are the whole palette, so a theme is one `[data-theme="<id>"]` block that sets them all (Gruvbox Dark is the `:root` default and also answers to its own id, so a row can preview it). Rules:
+- **Raw hex lives only in `theme.css`.** Everything else uses the variables; a test fails on a hex value in any other stylesheet. A canvas or script that needs a color reads it with `getComputedStyle(...).getPropertyValue("--name")`.
+- A light theme also sets `color-scheme: light`, so native controls (2a) follow.
+- Every theme must keep text readable (tested): `--fg` on `--bg` at least 7, `--fg` and `--yellow` on `--bg-soft` at least 4.5, `--yellow`, `--aqua`, `--green`, `--purple` on `--bg` at least 4.5, `--gray` and `--red` on `--bg` at least 3.5 (Gruvbox Dark's gray, 4.0, sets that floor).
+- Adding a theme = a CSS block plus one entry in `THEMES` in `src/core/theme.ts`; tests check the two agree.
+- The choice is `localStorage["theme"]` (a theme id; absent means `auto`). `auto` follows the system: Gruvbox Light when it prefers light, otherwise Gruvbox Dark. `/theme/` (window `5:theme`) lists the themes (each row previews its own colors through a scoped `data-theme`), and `t` cycles. A blocking inline script (`plugins/theme-boot.js`, injected in every page head) sets the attribute before first paint, so there is no flash. Without JavaScript the site is Gruvbox Dark.
+
 ## 3. The frame (every page, no exceptions)
 `renderPage({ page, command, body, date, ... })` in `src/core/shell.ts` outputs, in this fixed order:
 1. **Crumbs**: `1000110.xyz / blog / hello-world`, gray, each part but the last a link.
@@ -45,12 +53,13 @@ Page code only writes the body. The pages are listed once in `src/core/site.ts`;
 
 ## 4. The status line (every page)
 Fixed at the bottom, same on every page:
-- Left: the site windows from the site map, `1:home 2:blog 3:exp`, as links. The current page is highlighted yellow with `*`; a child page keeps its parent's window. This is the navigation on phones.
-- Right: a clock and the scroll progress, `23:41 [████░░░░] 42%`. Under 600px the clock hides, under 500px the bar hides, so a phone shows `42%`.
+- Left: the site windows from the site map, `1:home 2:blog 3:tools 4:exp 5:theme`, as links. The current page is highlighted yellow with `*`; a child page keeps its parent's window. This is the navigation on phones.
+- Right: a clock and the scroll progress, `23:41 [████░░░░] 42%`. Under 600px the clock hides, under 500px the bar hides, under 420px the percentage hides too.
+- `5:theme` is the last window (the theme page, 2b). Five windows fill the bar on a phone, so under 420px the percentage on the right is hidden too (the clock hides under 600px, the bar under 500px) and the touch padding of a window is 0.5ch; checked at 320, 360 and 390.
 - It clears the iPhone home indicator (`env(safe-area-inset-bottom)`), and on touch screens each window is at least 44px tall.
 
 ## 5. Keys (every page; only a bonus, everything works by tap)
-`1`-`9` go to site window N, `j`/`k` scroll, `g`/`G` top and bottom, `b` or Esc go up one level (a blog post goes back to the list, otherwise the parent page or home). Space, PageUp, PageDown and the arrows scroll natively.
+`1`-`9` go to site window N, `j`/`k` scroll, `g`/`G` top and bottom, `t` next color theme, `b` or Esc go up one level (a blog post goes back to the list, otherwise the parent page or home). Space, PageUp, PageDown and the arrows scroll natively.
 
 ## 6. Content patterns (what a page puts in the body)
 | pattern | pages | looks like |

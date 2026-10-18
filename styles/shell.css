@@ -125,12 +125,7 @@ body.shell {
         display: inline-flex;
         align-items: center;
         min-height: 44px;
-        padding: 0 0.6ch;
-    }
-
-    /* The status line is full at 360px: a wider padding is all the room this link gets (checked at 360 and 390). */
-    #status .theme-link {
-        padding: 0 1.4ch;
+        padding: 0 0.5ch;
     }
 
     .crumbs a {
@@ -165,6 +160,13 @@ body.shell {
 
 @media (max-width: 499px) {
     #meters .bar {
+        display: none;
+    }
+}
+
+/* Five windows (1:home ... 5:theme) leave no room for the percentage on a small phone. */
+@media (max-width: 419px) {
+    #meters .pct {
         display: none;
     }
 }

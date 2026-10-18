@@ -30,7 +30,7 @@ tests/                                  vitest; tests/helpers/shell.ts has asser
 
 ## The page frame and the site map
 - `renderPage({ page, command, body, date, trail?, name?, secret? })` outputs, always in this order: crumbs, man header, `$ command`, body, optional secret, end prompt. Page code only writes `body`; a page cannot leave a part out.
-- `pages` in `site.ts` is the single list of pages. The status line windows (`1:home 2:blog 3:tools 4:exp`, then a `◐` theme link), crumbs and man header all come from it. A new page = one entry there plus its HTML file in `vite.config.js`; `tests/pages.test.ts` fails if the two disagree, and `tests/build.test.ts` checks every built page has `body.shell`, a status line mount, the phone viewport and a `<noscript>`.
+- `pages` in `site.ts` is the single list of pages. The status line windows (`1:home 2:blog 3:tools 4:exp 5:theme`), crumbs and man header all come from it. A new page = one entry there plus its HTML file in `vite.config.js`; `tests/pages.test.ts` fails if the two disagree, and `tests/build.test.ts` checks every built page has `body.shell`, a status line mount, the phone viewport and a `<noscript>`.
 - Tests of every page renderer call `assertShell(html)` (parts present, in order, end prompt last).
 - Hidden messages: `secretBlock(text)` is a dim, aria-hidden binary block (4 bytes per line); pass `secret` to `renderPage` or call it per section. Posts can set `secret:` in their frontmatter (at most 32 characters).
 

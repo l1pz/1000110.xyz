@@ -38,7 +38,7 @@ The nine variables in `styles/theme.css` are the whole palette, so a theme is on
 - A light theme also sets `color-scheme: light`, so native controls (2a) follow.
 - Every theme must keep text readable (tested): `--fg` on `--bg` at least 7, `--fg` and `--yellow` on `--bg-soft` at least 4.5, `--yellow`, `--aqua`, `--green`, `--purple` on `--bg` at least 4.5, `--gray` and `--red` on `--bg` at least 3.5 (Gruvbox Dark's gray, 4.0, sets that floor).
 - Adding a theme = a CSS block plus one entry in `THEMES` in `src/core/theme.ts`; tests check the two agree.
-- The choice is `localStorage["theme"]` (a theme id; absent means `auto`). `auto` follows the system: Gruvbox Light when it prefers light, otherwise Gruvbox Dark. `/theme/` lists the themes (each row previews its own colors through a scoped `data-theme`), the `◐` link in the status line opens it, and `t` cycles. A blocking inline script (`plugins/theme-boot.js`, injected in every page head) sets the attribute before first paint, so there is no flash. Without JavaScript the site is Gruvbox Dark.
+- The choice is `localStorage["theme"]` (a theme id; absent means `auto`). `auto` follows the system: Gruvbox Light when it prefers light, otherwise Gruvbox Dark. `/theme/` (window `5:theme`) lists the themes (each row previews its own colors through a scoped `data-theme`), and `t` cycles. A blocking inline script (`plugins/theme-boot.js`, injected in every page head) sets the attribute before first paint, so there is no flash. Without JavaScript the site is Gruvbox Dark.
 
 ## 3. The frame (every page, no exceptions)
 `renderPage({ page, command, body, date, ... })` in `src/core/shell.ts` outputs, in this fixed order:
@@ -53,9 +53,9 @@ Page code only writes the body. The pages are listed once in `src/core/site.ts`;
 
 ## 4. The status line (every page)
 Fixed at the bottom, same on every page:
-- Left: the site windows from the site map, `1:home 2:blog 3:exp`, as links. The current page is highlighted yellow with `*`; a child page keeps its parent's window. This is the navigation on phones.
-- Right: a clock and the scroll progress, `23:41 [████░░░░] 42%`. Under 600px the clock hides, under 500px the bar hides, so a phone shows `42%`.
-- After the windows, a `◐` link to the theme page (2b). It is not a numbered window; on touch screens it is 44px tall and about 30px wide, because the bar is full at 360px.
+- Left: the site windows from the site map, `1:home 2:blog 3:tools 4:exp 5:theme`, as links. The current page is highlighted yellow with `*`; a child page keeps its parent's window. This is the navigation on phones.
+- Right: a clock and the scroll progress, `23:41 [████░░░░] 42%`. Under 600px the clock hides, under 500px the bar hides, under 420px the percentage hides too.
+- `5:theme` is the last window (the theme page, 2b). Five windows fill the bar on a phone, so under 420px the percentage on the right is hidden too (the clock hides under 600px, the bar under 500px) and the touch padding of a window is 0.5ch; checked at 320, 360 and 390.
 - It clears the iPhone home indicator (`env(safe-area-inset-bottom)`), and on touch screens each window is at least 44px tall.
 
 ## 5. Keys (every page; only a bonus, everything works by tap)

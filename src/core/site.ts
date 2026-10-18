@@ -31,15 +31,6 @@ export const pages: SitePage[] = [
     { id: "blog", path: "/blog/", window: "blog", name: "blog", section: "blog", pattern: "listing" },
     { id: "tools", path: "/tools/", window: "tools", name: "tools", section: "tools", pattern: "listing" },
     {
-        id: "theme",
-        path: "/theme/",
-        window: "",
-        name: "theme",
-        section: "theme",
-        pattern: "listing",
-        parent: "home",
-    },
-    {
         id: "experiments",
         path: "/experiments/",
         window: "exp",
@@ -56,6 +47,14 @@ export const pages: SitePage[] = [
         pattern: "tool",
         note: "work in progress",
         parent: "experiments",
+    },
+    {
+        id: "theme",
+        path: "/theme/",
+        window: "theme",
+        name: "theme",
+        section: "theme",
+        pattern: "listing",
     },
 ];
 

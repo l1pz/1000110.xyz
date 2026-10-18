@@ -1,15 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { keyAction, upPath } from "../src/core/keys";
 import { getPage } from "../src/core/site";
-import {
-    BAR_WIDTH,
-    formatClock,
-    metersHtml,
-    progressBar,
-    scrollFraction,
-    themeLinkHtml,
-    windowsHtml,
-} from "../src/core/statusline";
+import { BAR_WIDTH, formatClock, metersHtml, progressBar, scrollFraction, windowsHtml } from "../src/core/statusline";
 
 describe("scrollFraction", () => {
     it("is 0 at the top, 1 at the bottom, and clamped", () => {
@@ -50,6 +42,7 @@ describe("windowsHtml", () => {
             expect(html).toContain('href="/blog/">2:blog');
             expect(html).toContain('href="/tools/">3:tools');
             expect(html).toContain('href="/experiments/">4:exp');
+            expect(html).toContain('href="/theme/">5:theme');
         }
     });
 
@@ -64,16 +57,9 @@ describe("windowsHtml", () => {
     });
 });
 
-describe("themeLinkHtml", () => {
-    it("links to the theme page without a window number or the active mark", () => {
-        const html = themeLinkHtml();
-        expect(html).toContain('href="/theme/"');
-        expect(html).not.toContain("active");
-    });
-
-    it("the theme page keeps home's window current and has no window of its own", () => {
-        expect(windowsHtml(getPage("theme"))).toContain('class="win active" href="/">1:home*</a>');
-        expect(windowsHtml(getPage("theme"))).not.toContain("theme");
+describe("theme window", () => {
+    it("is the fifth window and is current on its own page", () => {
+        expect(windowsHtml(getPage("theme"))).toContain('class="win active" href="/theme/">5:theme*</a>');
     });
 });
 

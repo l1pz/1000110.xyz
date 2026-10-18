@@ -36,10 +36,6 @@ export function windowsHtml(page: SitePage): string {
         .join(" ");
 }
 
-/** The `◐` link to the theme page, shaped like a window so it gets the same tap target. */
-export const themeLinkHtml = (): string =>
-    '<a class="win theme-link" href="/theme/" title="color themes (t)" aria-label="color themes">◐</a>';
-
 /**
  * The right side: `23:41 [████░░░░] 42%`. CSS hides the clock under 600px and the bar under 500px,
  * so a phone shows just the percentage.
@@ -54,7 +50,7 @@ export function metersHtml(date: Date, fraction: number): string {
  * Returns `update`, for pages that change their length without scrolling (e.g. after a route change).
  */
 export function mountStatusLine(el: Element, page: SitePage): { update: () => void } {
-    el.innerHTML = `<span id="windows">${windowsHtml(page)} ${themeLinkHtml()}</span><span id="meters"></span>`;
+    el.innerHTML = `<span id="windows">${windowsHtml(page)}</span><span id="meters"></span>`;
     const meters = el.querySelector("#meters");
     const update = () => {
         const root = document.documentElement;

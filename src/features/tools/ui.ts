@@ -123,7 +123,7 @@ export function numberInput(
     max: number,
     onChange: () => void,
 ): { wrap: HTMLElement; get: () => number } {
-    const wrap = el("label", "field");
+    const wrap = el("div", "field");
     const text = el("span", "dim", { textContent: `${label} (${min}-${max})` });
     const input = el("input", "", {
         type: "number",
@@ -133,11 +133,24 @@ export function numberInput(
         step: "1",
     });
     input.inputMode = "numeric";
+    input.setAttribute("aria-label", label);
     input.addEventListener("input", onChange);
-    wrap.append(text, input);
+    // Our own stepper instead of the browser's spinner arrows (hidden in tools.css); same clamping as `get`.
+    const current = () => Math.min(max, Math.max(min, Math.round(Number(input.value)) || min));
+    const step = (by: number) => {
+        input.value = String(Math.min(max, Math.max(min, current() + by)));
+        onChange();
+    };
+    const less = button("-", () => step(-1));
+    const more = button("+", () => step(1));
+    less.setAttribute("aria-label", `decrease ${label}`);
+    more.setAttribute("aria-label", `increase ${label}`);
+    const row = el("div", "stepper");
+    row.append(less, input, more);
+    wrap.append(text, row);
     return {
         wrap,
-        get: () => Math.min(max, Math.max(min, Math.round(Number(input.value)) || min)),
+        get: current,
     };
 }
 

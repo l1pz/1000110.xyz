@@ -24,6 +24,14 @@ Every page is a terminal session. Pages share one frame and serve their own cont
 
 Spacing: prose and listings use a 1.6 line height; ASCII art uses 1.0 (tight, so it holds its shape). Blocks are separated by one blank line.
 
+### 2a. Built-in browser controls (check this whenever a new native control appears)
+Native widgets bring their own look (light or blue, rounded, wrong font) and must be brought onto the theme. Rule: **before shipping any new input type or built-in widget, look at it in `npm run dev` and make it match, using theme variables only.** Already done in `styles/theme.css`:
+- `color-scheme: dark` darkens native parts we do not style (form controls, the textarea resize grip, date and color pickers, dropdown lists); `accent-color` (yellow) tints checkboxes, radios, ranges and progress bars; `caret-color` and `::selection` use the theme yellow.
+- Scrollbars: `scrollbar-width: thin` and `scrollbar-color` (gray thumb on the page background) on everything, so page, text boxes and code blocks match.
+- Browser autofill is repainted with `:-webkit-autofill` so inputs stay on `--bg-soft`.
+- Number inputs: native spinner arrows are hidden (`styles/tools.css`) and `numberInput` in `src/features/tools/ui.ts` draws `-` and `+` buttons instead (same look and 44px tap targets as every button).
+Still to handle when they first appear: `<select>` (prefer a `modePicker` button row; if a real select is needed, style it like `.tool input`), date, time and color pickers (prefer our own text field plus a parser), checkboxes (prefer `toggleButton`), file inputs (use drop zones and a `button`), `<details>`, `<dialog>` and `<progress>` (draw the meter as text, like the status line). Prefer a TUI-style widget made from our buttons over styling a native one; if you must keep the native one, add its rule here.
+
 ## 3. The frame (every page, no exceptions)
 `renderPage({ page, command, body, date, ... })` in `src/core/shell.ts` outputs, in this fixed order:
 1. **Crumbs**: `1000110.xyz / blog / hello-world`, gray, each part but the last a link.

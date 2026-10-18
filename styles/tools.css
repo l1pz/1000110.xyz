@@ -38,6 +38,19 @@
     user-select: text;
 }
 
+/* Number inputs: no native spinners; the stepper buttons (ui.ts numberInput) replace them */
+.tool input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+    text-align: center;
+}
+
+.tool input[type="number"]::-webkit-inner-spin-button,
+.tool input[type="number"]::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+}
+
 .tool textarea:focus,
 .tool input[type="text"]:focus,
 .tool input[type="number"]:focus {
@@ -96,6 +109,23 @@
 
 .tool .status.error {
     color: var(--red);
+}
+
+.tool .stepper {
+    display: flex;
+    gap: 1ch;
+    align-items: stretch;
+}
+
+.tool .stepper input {
+    flex: 0 1 12ch;
+    min-width: 0;
+}
+
+.tool .stepper .btn {
+    flex: none;
+    min-width: 4ch;
+    padding: 0;
 }
 
 /* Touch screens: 44px tap targets, and 16px text in inputs so iOS does not zoom in when they are focused. */

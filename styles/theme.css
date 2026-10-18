@@ -25,6 +25,26 @@ html {
     font-kerning: none;
 }
 
+/* Built-in widgets: dark native controls (form parts, the textarea resize grip, date and color pickers), yellow
+   accents for checkboxes and ranges, and our own selection and caret colors */
+:root {
+    color-scheme: dark;
+    accent-color: var(--yellow);
+    caret-color: var(--yellow);
+}
+
+::selection {
+    background: var(--yellow);
+    color: var(--bg);
+}
+
+/* Browser autofill paints inputs light blue or yellow; keep them on the theme */
+input:-webkit-autofill,
+textarea:-webkit-autofill {
+    -webkit-text-fill-color: var(--fg);
+    box-shadow: 0 0 0 100px var(--bg-soft) inset;
+}
+
 /* Scrollbars (page, text boxes, code blocks) follow the theme: a gray thumb on the page background */
 * {
     scrollbar-width: thin;

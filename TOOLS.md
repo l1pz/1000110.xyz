@@ -80,7 +80,7 @@ Existing Phase 3 items map here: playground = 1, JSON formatter = 4, scratchpad 
 
 ## Encode / decode / crypto
 - [ ] Caesar / Vigenere / Atbash / XOR cipher tool [T]
-- [ ] JWT decoder [T]
+- [ ] JWT decoder [T]: its own tool, not an encode codec (one token in; header, payload and signature out; `exp` / `iat` / `nbf` as dates, `alg: none` warning; later HS256 verify). The token is never put in a "copy link"
 - [ ] UUID / ULID / NanoID generator [API] (batch A)
 - [ ] AES encrypt/decrypt with a passphrase [API]
 - [ ] Text to binary "hidden message" maker, tied to the binary footers [T]
@@ -97,7 +97,7 @@ Existing Phase 3 items map here: playground = 1, JSON formatter = 4, scratchpad 
 ## Dev
 - [ ] JSON to YAML / CSV [T], YAML / TOML / XML converters [LIB]
 - [ ] SQL formatter [LIB]
-- [ ] Cron expression explainer [T]
+- [ ] Cron expression explainer [T]: its own tool (plain-English text and the next runs)
 - [ ] Chmod calculator [T]
 - [ ] URL parser and query-string builder [T]
 - [ ] HTTP status code reference [T]
@@ -146,7 +146,7 @@ Existing Phase 3 items map here: playground = 1, JSON formatter = 4, scratchpad 
 - [ ] Unit converter, including data sizes and bits vs bytes [T]
 - [ ] Calculator with history, percentage and tip [T]
 - [ ] Programmer calculator (bit ops, two's complement) [T]
-- [ ] Date difference, "days until", age, week number [T]
+- [ ] Date calculator [T]: its own tool, separate from the timestamp / time zone converter (`time`, which is about instants). Difference between two dates (y/m/d and total days), add or subtract an amount, working days, "days until", age, ISO week, day of year, weekday
 - [ ] Roman numerals, prime checker, number to words [T]
 - [ ] Random number, dice, coin, picker wheel, team splitter [T]
 - [ ] World clock, Pomodoro, stopwatch, countdown [T]

@@ -10,6 +10,9 @@ src/core/site.ts                        the site map: pages as data (id, path, w
 src/core/shell.ts                       the page frame `renderPage` and its parts: crumbs, manHeader, promptLine, secretBlock, endPrompt, isoDate
 src/core/statusline.ts                  the shared status line: site windows, clock, scroll progress; mountStatusLine
 src/core/keys.ts                        the shared keys (1-9 windows, j/k, g/G, b/Esc) and bindKeys
+src/core/theme.ts                       color themes: the list, the saved choice (`auto` or an id), apply to <html>, cycle (see DESIGN.md 2b)
+src/themes.ts, src/themes-page.ts       the /theme/ page (rows with swatches); entry
+plugins/theme-boot.js                   build/dev plugin: injects the blocking script that sets the theme before first paint
 src/core/boot.ts                        bootPage (status line + keys) and mountPage (frame around one block, for tools)
 src/core/html.ts, binary.ts             escapeHtml; binaryLines (hidden messages)
 src/home.ts, src/index.ts               the home page (a session of commands); entry
@@ -27,13 +30,13 @@ tests/                                  vitest; tests/helpers/shell.ts has asser
 
 ## The page frame and the site map
 - `renderPage({ page, command, body, date, trail?, name?, secret? })` outputs, always in this order: crumbs, man header, `$ command`, body, optional secret, end prompt. Page code only writes `body`; a page cannot leave a part out.
-- `pages` in `site.ts` is the single list of pages. The status line windows (`1:home 2:blog 3:exp`), crumbs and man header all come from it. A new page = one entry there plus its HTML file in `vite.config.js`; `tests/pages.test.ts` fails if the two disagree, and `tests/build.test.ts` checks every built page has `body.shell`, a status line mount, the phone viewport and a `<noscript>`.
+- `pages` in `site.ts` is the single list of pages. The status line windows (`1:home 2:blog 3:tools 4:exp`, then a `◐` theme link), crumbs and man header all come from it. A new page = one entry there plus its HTML file in `vite.config.js`; `tests/pages.test.ts` fails if the two disagree, and `tests/build.test.ts` checks every built page has `body.shell`, a status line mount, the phone viewport and a `<noscript>`.
 - Tests of every page renderer call `assertShell(html)` (parts present, in order, end prompt last).
 - Hidden messages: `secretBlock(text)` is a dim, aria-hidden binary block (4 bytes per line); pass `secret` to `renderPage` or call it per section. Posts can set `secret:` in their frontmatter (at most 32 characters).
 
 ## Status line and keys (every page)
 - `statusline.ts`: left, the site windows as links (current page highlighted with `*`, a child page keeps its parent's window); right, `HH:MM [████░░░░] 42%`. CSS hides the clock under 600px and the bar under 500px.
-- `keys.ts`: `1`-`9` go to site window N, `j`/`k` scroll, `g`/`G` top and bottom, `b`/Esc go up (a blog post goes back to the list; otherwise the parent page, or home). Space, PageUp/PageDown and the arrows scroll natively.
+- `keys.ts`: `1`-`9` go to site window N, `j`/`k` scroll, `g`/`G` top and bottom, `t` next color theme, `b`/Esc go up (a blog post goes back to the list; otherwise the parent page, or home). Space, PageUp/PageDown and the arrows scroll natively.
 
 ## Phone rules in code
 - `--font-size` in `theme.css` is `min(14px, (100vw - 16px) / 26.49)`, so 44 columns (41 of content plus the page gutters) always fit a phone.

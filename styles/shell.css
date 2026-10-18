@@ -128,6 +128,11 @@ body.shell {
         padding: 0 0.6ch;
     }
 
+    /* The status line is full at 360px: a wider padding is all the room this link gets (checked at 360 and 390). */
+    #status .theme-link {
+        padding: 0 1.4ch;
+    }
+
     .crumbs a {
         display: inline-block;
         padding: 0.6em 0;
@@ -202,5 +207,72 @@ body.shell {
 
 /* A list is followed by the same gap as any block. */
 .row + p {
+    margin-top: 1.4em;
+}
+
+/* The theme page: one button per theme. A row's data-theme re-points the color variables for that row only, so
+   it previews its own colors (background, text, blocks) whatever theme the page is in. */
+.theme-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 2.4em;
+    margin: 0 0 0.4em;
+    padding: 0 1ch;
+    border: 1px solid var(--bg-soft);
+    background: var(--bg);
+    color: var(--fg);
+    font: inherit;
+    text-align: left;
+    white-space: pre;
+    cursor: pointer;
+}
+
+.theme-row[aria-pressed="true"] {
+    border-color: var(--yellow);
+}
+
+.theme-row:hover {
+    border-color: var(--gray);
+}
+
+.theme-row:focus-visible {
+    outline: 2px solid var(--yellow);
+    outline-offset: 1px;
+}
+
+.theme-row .dim {
+    color: var(--gray);
+}
+
+.sw-fg {
+    color: var(--fg);
+}
+.sw-yellow {
+    color: var(--yellow);
+}
+.sw-green {
+    color: var(--green);
+}
+.sw-aqua {
+    color: var(--aqua);
+}
+.sw-purple {
+    color: var(--purple);
+}
+.sw-red {
+    color: var(--red);
+}
+.sw-gray {
+    color: var(--gray);
+}
+
+@media (pointer: coarse) {
+    .theme-row {
+        min-height: 44px;
+    }
+}
+
+#theme-list + p {
     margin-top: 1.4em;
 }

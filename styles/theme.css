@@ -1,5 +1,9 @@
-/* Gruvbox Dark. Use these variables, never raw hex values, anywhere else. */
-:root {
+/* Colors. Use these variables, never raw hex values, anywhere else.
+   This block is Gruvbox Dark, the default; it also answers to [data-theme="gruvbox-dark"] so a row on the
+   theme page can show it while another theme is active. Other themes are blocks at the end of this file
+   (DESIGN.md 2b); every theme must define all nine variables. */
+:root,
+[data-theme="gruvbox-dark"] {
     --bg: #282828;
     --fg: #ebdbb2;
     --aqua: #8ec07c;
@@ -9,6 +13,9 @@
     --red: #fb4934;
     --gray: #928374;
     --bg-soft: #3c3836;
+}
+
+:root {
     /* 14px, shrinking on narrow phones so 44 columns (41 of content plus the page gutters) always fit:
        (viewport - 16px) / (44 * 0.602), where 0.602em is the width of one DejaVu Sans Mono character */
     --font-size: min(14px, calc((100vw - 16px) / 26.49));
@@ -75,4 +82,67 @@ a:hover {
 
 a:active {
     color: var(--yellow);
+}
+
+/* Themes (DESIGN.md 2b). Each block sets the nine variables; light themes also flip color-scheme so native
+   controls follow. These must stay after the :root block above, which they override. */
+[data-theme="gruvbox-light"] {
+    color-scheme: light;
+    --bg: #fbf1c7;
+    --fg: #3c3836;
+    --aqua: #356a49;
+    --green: #656008;
+    --yellow: #7d520a;
+    --purple: #8f3f71;
+    --red: #9d0006;
+    --gray: #6e6256;
+    --bg-soft: #ebdbb2;
+}
+
+[data-theme="amber"] {
+    --bg: #1a1100;
+    --fg: #ffb000;
+    --aqua: #ffc94d;
+    --green: #e6a100;
+    --yellow: #ffe08a;
+    --purple: #d99a3d;
+    --red: #ff7a4d;
+    --gray: #b0801f;
+    --bg-soft: #2b1d00;
+}
+
+[data-theme="phosphor"] {
+    --bg: #07140a;
+    --fg: #33ff66;
+    --aqua: #5cffb8;
+    --green: #9dff5c;
+    --yellow: #d6ff6b;
+    --purple: #7fe0a0;
+    --red: #ff7070;
+    --gray: #3fa862;
+    --bg-soft: #0f2a16;
+}
+
+[data-theme="solarized-dark"] {
+    --bg: #002b36;
+    --fg: #a6b4b4;
+    --aqua: #2aa198;
+    --green: #95a800;
+    --yellow: #c89600;
+    --purple: #e56cac;
+    --red: #ee4a47;
+    --gray: #7c9096;
+    --bg-soft: #073642;
+}
+
+[data-theme="nord"] {
+    --bg: #2e3440;
+    --fg: #d8dee9;
+    --aqua: #8fbcbb;
+    --green: #a3be8c;
+    --yellow: #ebcb8b;
+    --purple: #c4a0be;
+    --red: #d06f79;
+    --gray: #8a96ad;
+    --bg-soft: #3b4252;
 }

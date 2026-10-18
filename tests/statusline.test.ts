@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { keyAction, upPath } from "../src/core/keys";
 import { getPage } from "../src/core/site";
-import { BAR_WIDTH, formatClock, metersHtml, progressBar, scrollFraction, windowsHtml } from "../src/core/statusline";
+import {
+    BAR_WIDTH,
+    formatClock,
+    metersHtml,
+    progressBar,
+    scrollFraction,
+    themeLinkHtml,
+    windowsHtml,
+} from "../src/core/statusline";
 
 describe("scrollFraction", () => {
     it("is 0 at the top, 1 at the bottom, and clamped", () => {
@@ -56,6 +64,19 @@ describe("windowsHtml", () => {
     });
 });
 
+describe("themeLinkHtml", () => {
+    it("links to the theme page without a window number or the active mark", () => {
+        const html = themeLinkHtml();
+        expect(html).toContain('href="/theme/"');
+        expect(html).not.toContain("active");
+    });
+
+    it("the theme page keeps home's window current and has no window of its own", () => {
+        expect(windowsHtml(getPage("theme"))).toContain('class="win active" href="/">1:home*</a>');
+        expect(windowsHtml(getPage("theme"))).not.toContain("theme");
+    });
+});
+
 describe("metersHtml", () => {
     it("shows clock, bar and a fixed width percentage", () => {
         const html = metersHtml(new Date(2026, 9, 9, 23, 41), 0.42);
@@ -82,6 +103,10 @@ describe("keyAction", () => {
         expect(keyAction("Escape", 3)).toEqual({ type: "up" });
     });
 
+    it("t switches theme", () => {
+        expect(keyAction("t", 3)).toEqual({ type: "theme" });
+    });
+
     it("leaves other keys to the browser", () => {
         expect(keyAction(" ", 3)).toBeNull();
         expect(keyAction("ArrowDown", 3)).toBeNull();
@@ -94,5 +119,6 @@ describe("upPath", () => {
         expect(upPath(getPage("fluiddynamics"))).toBe("/experiments/");
         expect(upPath(getPage("blog"))).toBe("/");
         expect(upPath(getPage("home"))).toBeNull();
+        expect(upPath(getPage("theme"))).toBe("/");
     });
 });

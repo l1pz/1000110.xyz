@@ -174,18 +174,6 @@
     user-select: text;
 }
 
-.tool .diff-add {
-    color: var(--green);
-}
-
-.tool .diff-del {
-    color: var(--red);
-}
-
-.tool .diff-same {
-    color: var(--gray);
-}
-
 /* Regex */
 .tool .hit {
     background: var(--yellow);

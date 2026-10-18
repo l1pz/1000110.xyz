@@ -1,0 +1,139 @@
+/* Syntax highlighting (src/core/highlight). Theme variables only, so every theme colors code the same way. */
+.tok-key,
+.hljs-attr,
+.hljs-attribute,
+.hljs-property,
+.hljs-selector-class,
+.hljs-selector-id,
+.hljs-selector-tag {
+    color: var(--aqua);
+}
+
+.tok-str,
+.hljs-string,
+.hljs-regexp,
+.hljs-template-variable,
+.hljs-bullet {
+    color: var(--green);
+}
+
+.tok-num,
+.hljs-number,
+.hljs-literal,
+.hljs-symbol {
+    color: var(--purple);
+}
+
+.tok-kw,
+.hljs-keyword,
+.hljs-built_in,
+.hljs-type,
+.hljs-name,
+.hljs-tag,
+.hljs-selector-pseudo,
+.hljs-section {
+    color: var(--red);
+}
+
+.tok-esc,
+.tok-quant,
+.hljs-title,
+.hljs-title.function_,
+.hljs-variable,
+.hljs-params,
+.hljs-meta,
+.hljs-link,
+.hljs-doctag {
+    color: var(--yellow);
+}
+
+.tok-class,
+.tok-group,
+.hljs-subst {
+    color: var(--aqua);
+}
+
+.tok-punct,
+.tok-same,
+.hljs-comment,
+.hljs-quote,
+.hljs-punctuation {
+    color: var(--gray);
+}
+
+.tok-add,
+.hljs-addition {
+    color: var(--green);
+}
+
+.tok-del,
+.hljs-deletion {
+    color: var(--red);
+}
+
+.hljs-emphasis {
+    font-style: italic;
+}
+
+.hljs-strong {
+    font-weight: bold;
+}
+
+/* Editable fields: a highlighted <pre> sits behind a transparent <textarea> with identical metrics (ui.ts). */
+.hl {
+    position: relative;
+    background: var(--bg-soft);
+}
+
+.hl-back,
+.hl > textarea {
+    margin: 0;
+    padding: 0.5em 1ch;
+    border: 1px solid transparent;
+    font: inherit;
+    line-height: 1.4;
+    letter-spacing: normal;
+    tab-size: 4;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+.hl-back {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    color: var(--fg);
+    pointer-events: none;
+}
+
+.hl > textarea {
+    position: relative;
+    background: transparent;
+    color: transparent;
+    caret-color: var(--fg);
+}
+
+.hl > textarea::placeholder {
+    color: var(--gray);
+}
+
+.tool .hl > textarea:focus {
+    outline: 1px solid var(--yellow);
+    border-color: var(--yellow);
+}
+
+/* Read-only output */
+.tool pre.out {
+    margin: 0;
+    padding: 0.5em 1ch;
+    border: 1px solid var(--gray);
+    background: var(--bg-soft);
+    color: var(--fg);
+    line-height: 1.4;
+    max-height: 30em;
+    overflow: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: text;
+}

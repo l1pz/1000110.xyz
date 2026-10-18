@@ -1,9 +1,11 @@
-import { lineInput, statusLine } from "../../ui";
+import { buttonRow, lineInput, linkButton, statusLine, toolState } from "../../ui";
 import { calculate, rows } from "./cidr";
 
 export function mount(el: HTMLElement): void {
     const { wrap, input } = lineInput("address / prefix", "192.168.1.10/24 or 2001:db8::/32");
     input.value = "192.168.1.10/24";
+    const state = toolState("cidr");
+    state.bindText("a", input);
     const status = statusLine();
     const table = document.createElement("dl");
     table.className = "stats";
@@ -29,6 +31,6 @@ export function mount(el: HTMLElement): void {
     };
 
     input.addEventListener("input", update);
-    el.append(wrap, status.node, table);
+    el.append(wrap, status.node, table, buttonRow(linkButton(state)));
     update();
 }

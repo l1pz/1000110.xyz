@@ -4,6 +4,7 @@ Personal website of Máté Molnár: a retro ASCII terminal / cyberdeck made of t
 
 ## Rules that never change
 - **Look**: retro TUI. Monospace, ASCII art, Gruvbox Dark. Colors come from the CSS variables in `styles/theme.css`, never raw hex.
+- **Native controls**: any new built-in widget (select, date or color picker, checkbox, file input, spinner, scrollbar, ...) must be restyled to match before it ships; see `DESIGN.md` section 2a.
 - **Cards**: the engine (`src/card.ts`, 41 x 32) is a widget toolkit, not a page pattern. Never break the character grid inside a card.
 - **Zero bloat**: vanilla TypeScript + Vite only. No UI frameworks, no CSS frameworks. Ask before adding any runtime dependency.
 - **Design system**: every page is built by `renderPage` and listed in `src/core/site.ts` (see `DESIGN.md` section 9); never hand-write page chrome. Phone first: check UI changes at 360px and 390px wide, not only on desktop.

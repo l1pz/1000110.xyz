@@ -1,10 +1,13 @@
-import { button, buttonRow, lineInput, statusLine } from "../../ui";
+import { button, buttonRow, lineInput, linkButton, statusLine, toolState } from "../../ui";
 import { DEFAULT_ZONES, isValidZone, localZone, parseInput, rows } from "./time";
 
 export function mount(el: HTMLElement): void {
     const when = lineInput("timestamp or date", "1700000000, 2024-03-10T12:00:00Z or now");
     when.input.value = "now";
+    const state = toolState("time");
+    state.bindText("t", when.input);
     const zone = lineInput("extra time zone (IANA name)", "Europe/London");
+    state.bindText("z", zone.input);
     const status = statusLine();
     const table = document.createElement("dl");
     table.className = "stats wide";
@@ -38,6 +41,6 @@ export function mount(el: HTMLElement): void {
         when.input.value = "now";
         update();
     });
-    el.append(when.wrap, buttonRow(now), zone.wrap, status.node, table);
+    el.append(when.wrap, buttonRow(now, linkButton(state)), zone.wrap, status.node, table);
     update();
 }

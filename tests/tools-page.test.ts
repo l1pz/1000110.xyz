@@ -14,6 +14,11 @@ describe("parseRoute", () => {
         expect(parseRoute("#case")).toEqual({ view: "tool", id: "case" });
         expect(parseRoute("#a%20b")).toEqual({ view: "tool", id: "a b" });
     });
+
+    it("ignores the state after the id", () => {
+        expect(parseRoute("#json?i=%7B%7D&m=minify")).toEqual({ view: "tool", id: "json" });
+        expect(parseRoute("#?i=x")).toEqual({ view: "index" });
+    });
 });
 
 describe("toolRows", () => {

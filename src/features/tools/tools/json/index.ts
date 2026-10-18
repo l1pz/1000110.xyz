@@ -1,10 +1,24 @@
-import { modePicker, outputBox, statusLine, textInput, toggleButton } from "../../ui";
+import { buttonRow, linkButton, modePicker, outputBox, statusLine, textInput, toggleButton, toolState } from "../../ui";
 import { formatJson, INDENTS, type Indent, JsonError, type JsonMode, MODES } from "./format";
 
 export function mount(el: HTMLElement): void {
-    const options = { mode: "format" as JsonMode, indent: "2" as Indent, sortKeys: false };
+    const state = toolState("json");
+    const options = {
+        mode: state.get(
+            "m",
+            "format",
+            MODES.map((m) => m.id),
+        ) as JsonMode,
+        indent: state.get(
+            "x",
+            "2",
+            INDENTS.map((m) => m.id),
+        ) as Indent,
+        sortKeys: state.get("s", "0", ["0", "1"]) === "1",
+    };
     const { wrap, input } = textInput("input", "paste JSON");
-    const out = outputBox("output", 10);
+    state.bindText("i", input, { primary: true });
+    const out = outputBox("output", 10, { send: true });
     const status = statusLine();
 
     const update = () => {
@@ -23,17 +37,22 @@ export function mount(el: HTMLElement): void {
         wrap,
         modePicker(MODES, options.mode, (id) => {
             options.mode = id;
+            state.set("m", id);
             update();
         }),
         modePicker(INDENTS, options.indent, (id) => {
             options.indent = id;
+            state.set("x", id);
             update();
         }),
-        toggleButton("sort keys", false, (on) => {
+        toggleButton("sort keys", options.sortKeys, (on) => {
             options.sortKeys = on;
+            state.set("s", on ? "1" : "0");
             update();
         }),
         out.wrap,
         status.node,
+        buttonRow(linkButton(state)),
     );
+    update();
 }

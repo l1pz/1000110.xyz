@@ -1,4 +1,4 @@
-import { button, buttonRow, modePicker, outputBox, statusLine, textInput } from "../../ui";
+import { button, buttonRow, linkButton, modePicker, outputBox, statusLine, textInput, toolState } from "../../ui";
 import { CODECS, CodecError, type CodecId, type Direction, getCodec, run } from "./codec";
 
 const DIRECTIONS = [
@@ -7,14 +7,25 @@ const DIRECTIONS = [
 ] as const;
 
 export function mount(el: HTMLElement): void {
-    let codecId: CodecId = "base64";
-    let direction: Direction = "encode";
-    let variant = "";
+    const state = toolState("encode");
+    let codecId = state.get(
+        "c",
+        "base64",
+        CODECS.map((c) => c.id),
+    ) as CodecId;
+    let direction = state.get(
+        "d",
+        "encode",
+        DIRECTIONS.map((d) => d.id),
+    ) as Direction;
+    const variants = getCodec(codecId).variants;
+    let variant = state.get("v", "", (v) => v === "" || !!variants?.some((x) => x.id === v));
     let lastOk: string | null = null;
 
     const { wrap, input } = textInput("input", "type or paste text");
+    state.bindText("i", input, { primary: true });
     const controls = document.createElement("div");
-    const out = outputBox("output");
+    const out = outputBox("output", 6, { send: true });
     const status = statusLine();
 
     const update = () => {
@@ -38,6 +49,8 @@ export function mount(el: HTMLElement): void {
             modePicker(CODECS, codecId, (id) => {
                 codecId = id;
                 variant = "";
+                state.set("c", id);
+                state.set("v", "");
                 renderControls();
                 update();
             }),
@@ -46,6 +59,7 @@ export function mount(el: HTMLElement): void {
             parts.push(
                 modePicker(codec.variants, variant || codec.variants[0].id, (id) => {
                     variant = id;
+                    state.set("v", id);
                     update();
                 }),
             );
@@ -53,6 +67,7 @@ export function mount(el: HTMLElement): void {
         parts.push(
             modePicker(DIRECTIONS, direction, (id) => {
                 direction = id;
+                state.set("d", id);
                 update();
             }),
         );
@@ -63,12 +78,13 @@ export function mount(el: HTMLElement): void {
         if (lastOk === null) return;
         input.value = lastOk;
         direction = direction === "encode" ? "decode" : "encode";
+        state.set("d", direction);
         renderControls();
         update();
     });
 
     input.addEventListener("input", update);
-    el.append(wrap, controls, out.wrap, status.node, buttonRow(swap));
+    el.append(wrap, controls, out.wrap, status.node, buttonRow(swap, linkButton(state)));
     renderControls();
     update();
 }

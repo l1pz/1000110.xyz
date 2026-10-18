@@ -38,6 +38,19 @@
     user-select: text;
 }
 
+/* Number inputs: no native spinners; the stepper buttons (ui.ts numberInput) replace them */
+.tool input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+    text-align: center;
+}
+
+.tool input[type="number"]::-webkit-inner-spin-button,
+.tool input[type="number"]::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+}
+
 .tool textarea:focus,
 .tool input[type="text"]:focus,
 .tool input[type="number"]:focus {
@@ -74,7 +87,19 @@
 }
 
 .tool .field > .btn {
-    margin-top: 0.6em;
+    margin: 0.6em 1ch 0 0;
+}
+
+.tool [hidden] {
+    display: none;
+}
+
+.tool .field > .buttons {
+    margin: 0.6em 0 0;
+}
+
+.tool .hint {
+    margin-top: 0.4em;
 }
 
 .tool .status {
@@ -84,6 +109,23 @@
 
 .tool .status.error {
     color: var(--red);
+}
+
+.tool .stepper {
+    display: flex;
+    gap: 1ch;
+    align-items: stretch;
+}
+
+.tool .stepper input {
+    flex: 0 1 12ch;
+    min-width: 0;
+}
+
+.tool .stepper .btn {
+    flex: none;
+    min-width: 4ch;
+    padding: 0;
 }
 
 /* Touch screens: 44px tap targets, and 16px text in inputs so iOS does not zoom in when they are focused. */
@@ -163,4 +205,37 @@
     padding: 0 1ch;
     overflow: hidden;
     white-space: nowrap;
+}
+
+/* Search overlay (/ or Ctrl-K) */
+.palette {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 4em 1ch 1ch;
+    background: color-mix(in srgb, var(--bg) 94%, transparent);
+}
+
+.palette-box {
+    width: 100%;
+    max-width: 60ch;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6em;
+    padding: 1em 1ch;
+    border: 1px solid var(--yellow);
+    background: var(--bg);
+}
+
+.palette-list {
+    overflow-y: auto;
+}
+
+.palette-list .picked {
+    background: var(--bg-soft);
+    color: var(--yellow);
 }

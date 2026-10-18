@@ -1,4 +1,47 @@
 /** Small DOM helpers shared by tools. Styles are in `styles/tools.css`. Only used from `mount`, so logic stays testable. */
+import { refuseFile } from "./files";
+import { publicTools } from "./registry";
+import { createToolState, putPipe, splitHash, type ToolState } from "./state";
+
+/** The browser stores, or `null` where access is blocked (private windows, blocked site data). */
+function storage(kind: "localStorage" | "sessionStorage"): Storage | null {
+    try {
+        return window[kind];
+    } catch {
+        return null;
+    }
+}
+
+/** State for the tool `id`: URL values, remembered options, the "send to" handoff (see `state.ts`). Call once, at the top of `mount`. */
+export function toolState(id: string): ToolState {
+    return createToolState(id, location.hash, storage("localStorage"), storage("sessionStorage"));
+}
+
+/** Flashes `text` on a button for a moment, then restores its label. */
+function flash(btn: HTMLButtonElement, text: string): void {
+    const label = btn.dataset.label ?? btn.textContent ?? "";
+    btn.dataset.label = label;
+    btn.textContent = text;
+    setTimeout(() => {
+        btn.textContent = label;
+    }, 1500);
+}
+
+/** "copy link": copies a URL that reproduces the tool's input and options. Text over the link limit is left out and said so. */
+export function linkButton(state: ToolState): HTMLButtonElement {
+    const btn = button("copy link", async () => {
+        const { hash, dropped } = state.link();
+        const url = `${location.origin}${location.pathname}${hash}`;
+        try {
+            await navigator.clipboard.writeText(url);
+            flash(btn, dropped.length ? "copied, long text left out" : "copied");
+        } catch {
+            location.hash = hash; // clipboard blocked: the address bar now holds the link
+            flash(btn, "link is in the address bar");
+        }
+    });
+    return btn;
+}
 
 function el<K extends keyof HTMLElementTagNameMap>(
     tag: K,
@@ -10,13 +53,54 @@ function el<K extends keyof HTMLElementTagNameMap>(
     return Object.assign(node, props);
 }
 
-/** A labelled multi-line text input. */
-export function textInput(label: string, placeholder = ""): { wrap: HTMLElement; input: HTMLTextAreaElement } {
-    const wrap = el("label", "field");
-    const text = el("span", "dim", { textContent: label });
+/**
+ * A labelled multi-line text input with a "paste" button. A dropped text file is loaded into it (`drop: false`
+ * turns that off for tools that need the raw bytes of a file instead).
+ */
+export function textInput(
+    label: string,
+    placeholder = "",
+    { drop = true }: { drop?: boolean } = {},
+): { wrap: HTMLElement; input: HTMLTextAreaElement } {
+    const wrap = el("div", "field");
+    const text = el("label", "dim", { textContent: label });
     const input = el("textarea", "", { placeholder, rows: 6, spellcheck: false });
     input.autocapitalize = "off";
-    wrap.append(text, input);
+    text.append(input);
+    const note = (message: string, error = false) => {
+        hint.textContent = message;
+        hint.classList.toggle("error", error);
+    };
+    const load = (value: string) => {
+        input.value = value;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    const pasteBtn = button("paste", async () => {
+        try {
+            load(await navigator.clipboard.readText());
+            note("");
+        } catch {
+            input.focus(); // clipboard blocked: the usual paste still works
+            note("clipboard blocked: paste with Ctrl+V or the long-press menu");
+        }
+    });
+    const hint = el("span", "dim hint");
+    wrap.append(text, pasteBtn, hint);
+    if (drop) {
+        input.addEventListener("dragover", (e) => e.preventDefault());
+        input.addEventListener("drop", async (e) => {
+            const file = e.dataTransfer?.files[0];
+            if (!file) return;
+            e.preventDefault();
+            const body = file.size > 2_000_000 ? "" : await file.text();
+            const why = refuseFile(file.size, body);
+            if (why) note(why, true);
+            else {
+                load(body);
+                note(`loaded ${file.name}`);
+            }
+        });
+    }
     return { wrap, input };
 }
 
@@ -39,7 +123,7 @@ export function numberInput(
     max: number,
     onChange: () => void,
 ): { wrap: HTMLElement; get: () => number } {
-    const wrap = el("label", "field");
+    const wrap = el("div", "field");
     const text = el("span", "dim", { textContent: `${label} (${min}-${max})` });
     const input = el("input", "", {
         type: "number",
@@ -49,11 +133,24 @@ export function numberInput(
         step: "1",
     });
     input.inputMode = "numeric";
+    input.setAttribute("aria-label", label);
     input.addEventListener("input", onChange);
-    wrap.append(text, input);
+    // Our own stepper instead of the browser's spinner arrows (hidden in tools.css); same clamping as `get`.
+    const current = () => Math.min(max, Math.max(min, Math.round(Number(input.value)) || min));
+    const step = (by: number) => {
+        input.value = String(Math.min(max, Math.max(min, current() + by)));
+        onChange();
+    };
+    const less = button("-", () => step(-1));
+    const more = button("+", () => step(1));
+    less.setAttribute("aria-label", `decrease ${label}`);
+    more.setAttribute("aria-label", `increase ${label}`);
+    const row = el("div", "stepper");
+    row.append(less, input, more);
+    wrap.append(text, row);
     return {
         wrap,
-        get: () => Math.min(max, Math.max(min, Math.round(Number(input.value)) || min)),
+        get: current,
     };
 }
 
@@ -69,8 +166,12 @@ export function toggleButton(label: string, initial: boolean, onChange: (on: boo
     return btn;
 }
 
-/** A labelled read-only result box with a copy button. */
-export function outputBox(label: string, rows = 6): { wrap: HTMLElement; set: (text: string) => void } {
+/** A labelled read-only result box with a copy button, and (`send: true`) a "send to" picker of the other text tools. */
+export function outputBox(
+    label: string,
+    rows = 6,
+    { send = false }: { send?: boolean } = {},
+): { wrap: HTMLElement; set: (text: string) => void } {
     const wrap = el("div", "field");
     const text = el("span", "dim", { textContent: label });
     const box = el("textarea", "", { readOnly: true, rows, spellcheck: false });
@@ -87,6 +188,27 @@ export function outputBox(label: string, rows = 6): { wrap: HTMLElement; set: (t
         }, 1500);
     });
     wrap.append(text, box, copy);
+    if (send) {
+        const here = splitHash(location.hash).id;
+        const picker = el("div", "buttons");
+        picker.hidden = true;
+        picker.append(
+            ...publicTools()
+                .filter((t) => t.pipe && t.id !== here)
+                .map((t) =>
+                    button(t.id, () => {
+                        if (box.value === "") return flash(copy, "nothing to send");
+                        if (!putPipe(storage("sessionStorage"), box.value)) return flash(copy, "storage blocked");
+                        location.hash = `#${encodeURIComponent(t.id)}`;
+                    }),
+                ),
+        );
+        const sendBtn = button("send to", () => {
+            picker.hidden = !picker.hidden;
+            sendBtn.classList.toggle("active", !picker.hidden);
+        });
+        wrap.append(sendBtn, picker);
+    }
     return {
         wrap,
         set: (value) => {

@@ -219,6 +219,8 @@ export function outputBox(
     const text = el("span", "dim", { textContent: label });
     // With a colorer the result is a highlighted <pre>; `raw` always holds the plain text that copy and "send to" use.
     const shown = colorer ? el("pre", "out") : null;
+    // Same height as the textarea it replaces: `rows` lines of 1.4em plus the padding (1em) and borders (2px).
+    if (shown) shown.style.minHeight = `calc(${rows * 1.4}em + 1em + 2px)`;
     const area = el("textarea", "", { readOnly: true, rows, spellcheck: false });
     let raw = "";
     const box = {

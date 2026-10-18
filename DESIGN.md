@@ -40,6 +40,9 @@ The nine variables in `styles/theme.css` are the whole palette, so a theme is on
 - Adding a theme = a CSS block plus one entry in `THEMES` in `src/core/theme.ts`; tests check the two agree.
 - The choice is `localStorage["theme"]` (a theme id; absent means `auto`). `auto` follows the system: Gruvbox Light when it prefers light, otherwise Gruvbox Dark. `/theme/` (window `5:theme`) lists the themes (each row previews its own colors through a scoped `data-theme`), and `t` cycles. A blocking inline script (`plugins/theme-boot.js`, injected in every page head) sets the attribute before first paint, so there is no flash. Without JavaScript the site is Gruvbox Dark.
 
+### 2c. Syntax highlighting
+Code colors come from `styles/highlight.css`, theme variables only: keys and classes aqua, strings green, numbers and literals purple, keywords red, escapes, quantifiers and function names yellow, comments and punctuation gray, diff add green and del red. Editable fields keep the character grid: the colored layer has the same font, padding and wrapping as the textarea behind it. Check new highlighted fields on a phone at 360 and 390.
+
 ## 3. The frame (every page, no exceptions)
 `renderPage({ page, command, body, date, ... })` in `src/core/shell.ts` outputs, in this fixed order:
 1. **Crumbs**: `1000110.xyz / blog / hello-world`, gray, each part but the last a link.

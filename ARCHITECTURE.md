@@ -70,6 +70,11 @@ Features never import each other; shared code goes in `src/core/`. This keeps ea
 - `registry.ts`: `loadTools` validates every `meta` (unique id, id = folder, known category, `secret` at most 32 characters) and throws with the file path; `publicTools`/`getPublicTool` hide `access: "private"` tools (backend tools for the owner behind Pocket ID, listed only in the admin later); `loadTool(id)` imports the code.
 - `page.ts` renders through `renderPage`, shows `loading...` while a chunk loads, and calls the previous tool's `cleanup()` on every route change. `ui.ts` has the shared form bits (`textInput` with paste and text-file drop, `outputBox` with copy and "send to", `modePicker`, `toolState` and `linkButton`), styled in `styles/tools.css`. `state.ts` (pure) holds the hash query, remembered options and the "send to" handoff; `files.ts` the drop rules; `palette.ts` the `/` / Ctrl-K search (`rankTools` is pure).
 
+### Syntax highlighting (`src/core/highlight/`)
+- `index.ts`: `highlight(lang, text)` (async, escaped HTML), `highlightNow` (json, sync), `canonicalLang` (`js`, `html`, `sh` ... to an id), `splitHtmlLines`. `json.ts` is a hand-written tokenizer; `generic.ts` is the only file that imports `highlight.js` (javascript, typescript, css, xml, markdown, bash) and is loaded lazily. Classes: our `tok-*` and `hljs-*`, colored in `styles/highlight.css` from theme variables.
+- Regex and diff colorers sit in their tool folders (`regex/highlight.ts` reuses `explain()`, whose steps now carry a `kind`; `diff/highlight.ts`).
+- `ui.ts`: `textInput(..., { colorer })` draws the overlay, `outputBox(..., { colorer })` a colored `<pre>`. Blog: `blog/code.ts` colors `pre.code[data-lang]` blocks after render.
+
 ## Card engine (`src/card.ts`, kept as a toolkit)
 Pure logic, fully tested (`tests/card.test.ts`). The only DOM touch is `render()`. Cards are for future widgets (a table of contents, the Oracle, a clock), not for pages.
 - `new Card(cols, rows, title, draw, border?)`: title on row 1, drawing starts at row 3. A title starting with `$ ` gets a dim prompt.

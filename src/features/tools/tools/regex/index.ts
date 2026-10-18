@@ -1,5 +1,6 @@
 import { buttonRow, lineInput, linkButton, statusLine, textInput, toggleButton, toolState } from "../../ui";
 import { explain } from "./explain";
+import { highlightRegex } from "./highlight";
 import { FLAGS, type Match, RegexError, runRegex, segments } from "./run";
 
 function node<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text = ""): HTMLElementTagNameMap[K] {
@@ -42,10 +43,11 @@ export function mount(el: HTMLElement): void {
         steps.replaceChildren(
             ...explain(pattern.input.value).map((s) => {
                 const row = node("span", "");
-                row.append(
-                    `${"  ".repeat(s.depth)}${s.token}`.padEnd(14 + s.depth * 2),
-                    node("span", "dim", ` ${s.meaning}\n`),
-                );
+                const lead = "  ".repeat(s.depth);
+                const pad = " ".repeat(Math.max(0, 14 + s.depth * 2 - lead.length - s.token.length));
+                const colored = node("span", "");
+                colored.innerHTML = highlightRegex(s.token);
+                row.append(lead, colored, pad, node("span", "dim", ` ${s.meaning}\n`));
                 return row;
             }),
         );

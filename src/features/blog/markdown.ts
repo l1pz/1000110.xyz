@@ -1,3 +1,4 @@
+import { canonicalLang } from "../../core/highlight/langs";
 import { escapeHtml } from "../../core/html";
 
 // Only these links become <a>; anything else (javascript:, data:, ...) stays plain text.
@@ -35,17 +36,34 @@ export function renderInline(text: string): string {
         .join("");
 }
 
-/** A code block drawn as a text box: `┌─ lang ──┐ │ code │ └────────┘`. */
-function codeBox(code: string[], lang: string): string {
-    const lines = code.length === 0 ? [""] : code.map((l) => l.replace(/\t/g, "    "));
+/** One code line: its raw text (for the width) and its HTML (escaped, optionally colored). */
+export interface BoxLine {
+    raw: string;
+    html: string;
+}
+
+/**
+ * A code block drawn as a text box: `┌─ lang ──┐ │ code │ └────────┘`. A language that is highlighted adds
+ * `data-lang`; the blog page colors those blocks later (see `highlightBlocks`), keeping the box as it is.
+ */
+export function codeBoxHtml(lines: BoxLine[], lang: string, colored = false): string {
+    const rows = lines.length === 0 ? [{ raw: "", html: "" }] : lines;
     const label = lang ? ` ${lang} ` : "";
-    const width = Math.max(label.length, ...lines.map((l) => l.length));
-    const box = [
-        `┌${`─${label}`.padEnd(width + 2, "─")}┐`,
-        ...lines.map((l) => `│ ${l.padEnd(width)} │`),
-        `└${"─".repeat(width + 2)}┘`,
-    ];
-    return `<pre class="code">${escapeHtml(box.join("\n"))}</pre>`;
+    const width = Math.max(label.length, ...rows.map((l) => l.raw.length));
+    const top = escapeHtml(`┌${`─${label}`.padEnd(width + 2, "─")}┐`);
+    const body = rows.map((l) => `│ ${l.html}${" ".repeat(width - l.raw.length)} │`);
+    const bottom = `└${"─".repeat(width + 2)}┘`;
+    const language = canonicalLang(lang);
+    const attr = language ? ` data-lang="${language}"${colored ? ' data-colored=""' : ""}` : "";
+    return `<pre class="code"${attr}>${[top, ...body, bottom].join("\n")}</pre>`;
+}
+
+function codeBox(code: string[], lang: string): string {
+    const lines = code.map((l) => l.replace(/\t/g, "    "));
+    return codeBoxHtml(
+        lines.map((raw) => ({ raw, html: escapeHtml(raw) })),
+        lang,
+    );
 }
 
 /**

@@ -1,6 +1,10 @@
+/** What kind of pattern part a token is; the highlighter colors by it. */
+export type StepKind = "escape" | "class" | "group" | "quantifier" | "alternation" | "anchor" | "any" | "literal";
+
 export interface Step {
     /** Nesting depth: groups indent what is inside them. */
     depth: number;
+    kind: StepKind;
     token: string;
     meaning: string;
 }
@@ -70,7 +74,8 @@ export function explain(pattern: string): Step[] {
     const steps: Step[] = [];
     let depth = 0;
     let i = 0;
-    const add = (token: string, meaning: string, at = depth) => steps.push({ depth: at, token, meaning });
+    const add = (kind: StepKind, token: string, meaning: string, at = depth) =>
+        steps.push({ depth: at, kind, token, meaning });
 
     while (i < pattern.length) {
         const rest = pattern.slice(i);
@@ -82,44 +87,44 @@ export function explain(pattern: string): Step[] {
                 /^\\(?:u\{[0-9a-fA-F]+\}|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|[pP]\{[^}]*\}|k<[^>]*>|[1-9][0-9]*|.)/s.exec(
                     rest,
                 )?.[0] ?? c;
-            add(token, escapeMeaning(token));
+            add("escape", token, escapeMeaning(token));
             i += token.length;
         } else if (c === "[") {
             const token = /^\[\^?(?:\\.|[^\]\\])*\]?/s.exec(rest)?.[0] ?? c;
-            add(token, classMeaning(token));
+            add("class", token, classMeaning(token));
             i += token.length;
         } else if (c === "(") {
             const named = /^\(\?<([A-Za-z_$][\w$]*)>/.exec(rest);
             const kind = GROUPS.find(([open]) => rest.startsWith(open));
-            if (named) add(named[0], `start of capture group "${named[1]}"`);
-            else if (kind) add(kind[0], `start of ${kind[1]}`);
-            else add("(", "start of capture group");
+            if (named) add("group", named[0], `start of capture group "${named[1]}"`);
+            else if (kind) add("group", kind[0], `start of ${kind[1]}`);
+            else add("group", "(", "start of capture group");
             const length = named?.[0].length ?? kind?.[0].length ?? 1;
             depth++;
             i += length;
         } else if (c === ")") {
             depth = Math.max(0, depth - 1);
-            add(")", "end of group");
+            add("group", ")", "end of group");
             i++;
         } else if (quantifier) {
-            add(quantifier[0], quantifierMeaning(quantifier[0]));
+            add("quantifier", quantifier[0], quantifierMeaning(quantifier[0]));
             i += quantifier[0].length;
         } else if (c === "|") {
-            add("|", "or: either side matches", Math.max(0, depth - 1));
+            add("alternation", "|", "or: either side matches", Math.max(0, depth - 1));
             i++;
         } else if (c === "^") {
-            add("^", "start of the text (or of a line with the m flag)");
+            add("anchor", "^", "start of the text (or of a line with the m flag)");
             i++;
         } else if (c === "$") {
-            add("$", "end of the text (or of a line with the m flag)");
+            add("anchor", "$", "end of the text (or of a line with the m flag)");
             i++;
         } else if (c === ".") {
-            add(".", "any character except a newline (with the s flag, any character)");
+            add("any", ".", "any character except a newline (with the s flag, any character)");
             i++;
         } else {
             const [cp] = rest;
             const token = String.fromCodePoint(cp.codePointAt(0) ?? 0);
-            add(token, `the character ${token}`);
+            add("literal", token, `the character ${token}`);
             i += token.length;
         }
     }

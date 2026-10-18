@@ -2,6 +2,7 @@ import { bootPage } from "../../core/boot";
 import { escapeHtml } from "../../core/html";
 import { isoDate, renderPage } from "../../core/shell";
 import { crumbTrail, getPage } from "../../core/site";
+import { highlightBlocks } from "./code";
 import type { Post } from "./frontmatter";
 import { renderMarkdown } from "./markdown";
 import { getPost, getPosts } from "./posts";
@@ -89,6 +90,7 @@ export async function mount(el: Element): Promise<void> {
         }
         window.scrollTo(0, 0);
         status.update();
+        void highlightBlocks(content);
     };
 
     window.addEventListener("hashchange", show);

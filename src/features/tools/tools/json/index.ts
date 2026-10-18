@@ -1,5 +1,11 @@
+import { highlightJson } from "../../../../core/highlight/json";
+import { escapeHtml } from "../../../../core/html";
 import { buttonRow, linkButton, modePicker, outputBox, statusLine, textInput, toggleButton, toolState } from "../../ui";
 import { formatJson, INDENTS, type Indent, JsonError, type JsonMode, MODES } from "./format";
+
+/** Past this size coloring on every keystroke would lag, so the text is shown plain. */
+const COLOR_LIMIT = 200_000;
+const color = (text: string) => (text.length > COLOR_LIMIT ? escapeHtml(text) : highlightJson(text));
 
 export function mount(el: HTMLElement): void {
     const state = toolState("json");
@@ -16,9 +22,9 @@ export function mount(el: HTMLElement): void {
         ) as Indent,
         sortKeys: state.get("s", "0", ["0", "1"]) === "1",
     };
-    const { wrap, input } = textInput("input", "paste JSON");
+    const { wrap, input } = textInput("input", "paste JSON", { colorer: color });
     state.bindText("i", input, { primary: true });
-    const out = outputBox("output", 10, { send: true });
+    const out = outputBox("output", 10, { send: true, colorer: color });
     const status = statusLine();
 
     const update = () => {

@@ -17,6 +17,49 @@ export function toolState(id: string): ToolState {
     return createToolState(id, location.hash, storage("localStorage"), storage("sessionStorage"));
 }
 
+/** Turns text into highlighted HTML; may be async (the generic languages load their chunk on first use). */
+export type Colorer = (text: string) => string | Promise<string>;
+
+/** Puts `html` into `pre`; a later call wins over an earlier one that is still loading. */
+function paint(pre: HTMLElement, text: string, colorer: Colorer): void {
+    const ticket = String(Number(pre.dataset.ticket ?? 0) + 1);
+    pre.dataset.ticket = ticket;
+    void Promise.resolve(colorer(text)).then(
+        (html) => {
+            if (pre.dataset.ticket === ticket) pre.innerHTML = html;
+        },
+        () => {
+            if (pre.dataset.ticket === ticket) pre.textContent = text; // chunk failed to load: plain text
+        },
+    );
+}
+
+/**
+ * Overlay highlighting for a textarea: a colored `<pre>` sits behind it with the same font, padding and wrapping, the
+ * textarea text is transparent (the caret stays), and scrolling is mirrored. Returns the element to put in the page.
+ */
+function overlay(input: HTMLTextAreaElement, colorer: Colorer): HTMLElement {
+    const box = el("div", "hl");
+    const back = el("pre", "hl-back");
+    back.setAttribute("aria-hidden", "true");
+    box.append(back, input);
+    const sync = () => {
+        back.scrollTop = input.scrollTop;
+        // A scrollbar in the textarea narrows its text; give the `<pre>` the same width so lines wrap alike.
+        back.style.paddingRight = `calc(1ch + ${input.offsetWidth - input.clientWidth - 2}px)`;
+    };
+    const draw = () => {
+        paint(back, `${input.value}\n`, colorer); // the extra newline gives a final empty line its height
+        sync();
+    };
+    input.addEventListener("input", draw);
+    input.addEventListener("scroll", sync);
+    // Values set from code (paste, drop, links) fire "input" through `load` and `bindText`; this catches the rest.
+    new ResizeObserver(sync).observe(input);
+    queueMicrotask(draw);
+    return box;
+}
+
 /** Flashes `text` on a button for a moment, then restores its label. */
 function flash(btn: HTMLButtonElement, text: string): void {
     const label = btn.dataset.label ?? btn.textContent ?? "";
@@ -60,13 +103,13 @@ function el<K extends keyof HTMLElementTagNameMap>(
 export function textInput(
     label: string,
     placeholder = "",
-    { drop = true }: { drop?: boolean } = {},
+    { drop = true, colorer }: { drop?: boolean; colorer?: Colorer } = {},
 ): { wrap: HTMLElement; input: HTMLTextAreaElement } {
     const wrap = el("div", "field");
     const text = el("label", "dim", { textContent: label });
     const input = el("textarea", "", { placeholder, rows: 6, spellcheck: false });
     input.autocapitalize = "off";
-    text.append(input);
+    text.append(colorer ? overlay(input, colorer) : input);
     const note = (message: string, error = false) => {
         hint.textContent = message;
         hint.classList.toggle("error", error);
@@ -170,11 +213,20 @@ export function toggleButton(label: string, initial: boolean, onChange: (on: boo
 export function outputBox(
     label: string,
     rows = 6,
-    { send = false }: { send?: boolean } = {},
+    { send = false, colorer }: { send?: boolean; colorer?: Colorer } = {},
 ): { wrap: HTMLElement; set: (text: string) => void } {
     const wrap = el("div", "field");
     const text = el("span", "dim", { textContent: label });
-    const box = el("textarea", "", { readOnly: true, rows, spellcheck: false });
+    // With a colorer the result is a highlighted <pre>; `raw` always holds the plain text that copy and "send to" use.
+    const shown = colorer ? el("pre", "out") : null;
+    const area = el("textarea", "", { readOnly: true, rows, spellcheck: false });
+    let raw = "";
+    const box = {
+        get value() {
+            return raw;
+        },
+        select: () => (shown ? getSelection()?.selectAllChildren(shown) : area.select()),
+    };
     const copy = button("copy", async () => {
         try {
             await navigator.clipboard.writeText(box.value);
@@ -187,7 +239,7 @@ export function outputBox(
             copy.textContent = "copy";
         }, 1500);
     });
-    wrap.append(text, box, copy);
+    wrap.append(text, shown ?? area, copy);
     if (send) {
         const here = splitHash(location.hash).id;
         const picker = el("div", "buttons");
@@ -212,7 +264,9 @@ export function outputBox(
     return {
         wrap,
         set: (value) => {
-            box.value = value;
+            raw = value;
+            if (shown && colorer) paint(shown, value, colorer);
+            else area.value = value;
         },
     };
 }

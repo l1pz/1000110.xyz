@@ -14,6 +14,8 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 
 log = logging.getLogger("sc2bp.beatport")
+# httpx logs every request URL at INFO, which would put the one-time authorization code in the log
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 API = "https://api.beatport.com/v4"
 REDIRECT_URI = f"{API}/auth/o/post-message/"
@@ -177,7 +179,7 @@ class Beatport:
                 headers = {"Authorization": f"Bearer {self._bearer(force=attempt == 1)}"}
                 try:
                     with self._new_client() as http:
-                        response = http.request(method, f"{API}{path}", headers=headers, **kwargs)
+                        response = http.request(method, f"{API}{path}", headers=headers, follow_redirects=True, **kwargs)
                 except httpx.HTTPError:
                     raise BeatportError("could not reach Beatport") from None
                 if response.status_code == 401 and attempt == 0:
@@ -192,7 +194,7 @@ class Beatport:
         raise BeatportError("Beatport refused the login token")  # unreachable; keeps the type checker calm
 
     def search(self, query: str) -> list[dict]:
-        data = self._request("GET", "/catalog/search", params={"q": query, "per_page": 10, "type": "tracks"})
+        data = self._request("GET", "/catalog/search/", params={"q": query, "per_page": 10, "type": "tracks"})
         return [candidate(t) for t in data.get("tracks") or [] if isinstance(t, dict) and "id" in t]
 
     def create_playlist(self, name: str, ids: list[int]) -> dict:

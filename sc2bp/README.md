@@ -11,7 +11,7 @@ The service behind the `sc2bp` tool (`/tools/#sc2bp`): lists a SoundCloud playli
 
 ## Deploy (by hand, like Ruminant)
 1. Copy this folder to `/opt/stacks/sc2bp/` (without `tests/`).
-2. `mkdir data && chown 10002 data` (the container user), and create `.env` (mode 600) with `BEATPORT_USERNAME=` and `BEATPORT_PASSWORD=`. Never commit it.
+2. `mkdir data && chown 10002 data` (the container user), and create `.env` (mode 600) with `BEATPORT_USERNAME=` and `BEATPORT_PASSWORD=`. Never commit it. Compose reads `$` in an `.env` value as a variable: if the password has `$` followed by letters or `{`, wrap the value in single quotes (`BEATPORT_PASSWORD='pa$$word'`). Check the length inside the container with `docker exec sc2bp python -c "import os; print(len(os.environ['BEATPORT_PASSWORD']))"` (never print the value).
 3. `docker compose up -d --build`.
 
 ## Maintenance

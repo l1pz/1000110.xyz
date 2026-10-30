@@ -46,7 +46,9 @@ class FakeBeatport:
         if self.refused_tokens > 0:
             self.refused_tokens -= 1
             return httpx.Response(401, json={"detail": "expired"})
-        if path == "/v4/catalog/search":
+        if path == "/v4/catalog/search":  # the real API redirects to the slash form
+            return httpx.Response(301, headers={"location": f"/v4/catalog/search/?{request.url.query.decode()}"})
+        if path == "/v4/catalog/search/":
             if self.search_status != 200:
                 return httpx.Response(self.search_status, text="secret body from beatport")
             return httpx.Response(
@@ -119,6 +121,23 @@ def test_first_call_logs_in_with_the_documented_flow(world):
     assert api.headers["authorization"] == "Bearer access1"
     assert api.url.params["type"] == "tracks"
     assert api.url.params["q"] == "solomun higher state"
+
+
+def test_search_uses_the_slash_form_and_would_survive_a_redirect(world):
+    fake, _, make, _ = world
+    make().search("x")
+    assert "GET /v4/catalog/search/" in fake.paths()
+    assert "GET /v4/catalog/search" not in fake.paths()
+    # a call without the slash is redirected by the (fake) API, and the client follows it
+    bp = make()
+    bp.search("warm up")
+    assert bp._request("GET", "/catalog/search", params={"q": "x", "type": "tracks"})["tracks"]
+
+
+def test_httpx_request_logging_is_quiet_so_codes_stay_out_of_the_log():
+    import logging
+
+    assert logging.getLogger("httpx").getEffectiveLevel() >= logging.WARNING
 
 
 def test_search_maps_tracks_to_candidates(world):

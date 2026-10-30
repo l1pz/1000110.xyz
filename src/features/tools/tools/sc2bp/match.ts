@@ -1,4 +1,4 @@
-import { normalize, type ParsedTrack } from "./parse";
+import { normalize, type ParsedTrack, SPECIAL_LETTERS } from "./parse";
 
 /** A Beatport search result, reduced to what matching needs. */
 export interface Candidate {
@@ -47,14 +47,16 @@ export function similarity(a: string, b: string): number {
     return (2 * shared) / (a.length + b.length - 2);
 }
 
+/** `AREA ØNE` is `AREA NE` on Beatport: names are compared with `ø` as "o" and again with such letters dropped. */
+const spellings = (text: string): string[] => [normalize(text), normalize(text.replace(SPECIAL_LETTERS, ""))];
+
 /** Share of the track's artists found in the candidate's artist list (as whole words). */
 function artistScore(parsed: string[], candidate: string[]): number {
     if (parsed.length === 0) return 0;
-    const haystack = ` ${normalize(candidate.join(" "))} `;
-    const found = parsed.filter((name) => {
-        const needle = normalize(name);
-        return needle !== "" && haystack.includes(` ${needle} `);
-    });
+    const haystacks = spellings(candidate.join(" ")).map((h) => ` ${h} `);
+    const found = parsed.filter((name) =>
+        spellings(name).some((needle, i) => needle !== "" && haystacks[i].includes(` ${needle} `)),
+    );
     return found.length / parsed.length;
 }
 
@@ -107,5 +109,8 @@ export function matchTrack(parsed: ParsedTrack, candidates: Candidate[]): MatchR
     if (best.score >= 0.85 && title >= 0.9 && mix >= 0.8 && (parsed.artistGuessed || artist >= 0.5)) {
         return { verdict: "match", ranked };
     }
-    return { verdict: best.score >= 0.55 && title >= 0.6 ? "maybe" : "none", ranked };
+    // a title shared with an unrelated track is no suggestion: with no artist in common (and a real artist to
+    // compare), the length has to agree as well
+    const unrelated = !parsed.artistGuessed && artist === 0 && best.parts.duration < 0.6;
+    return { verdict: best.score >= 0.55 && title >= 0.6 && !unrelated ? "maybe" : "none", ranked };
 }

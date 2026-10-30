@@ -21,15 +21,22 @@ const FEAT = /^(?:feat\.?|ft\.?|featuring)\s+(.+)$/i;
 const MIX_WORD = /\b(?:mix|remix|edit|dub|version|bootleg|rework|vip|flip|refix|remaster(?:ed)?)\b/i;
 const JUNK_WORD =
     /\b(?:free\s*(?:download|dl)|fd|buy|premiere|out now|exclusive|preview|clip|snippet|forthcoming|download|dl)\b/i;
+/** `Premiere | `, `PREMIERE : `, `FREE DOWNLOAD | ` in front of the artist. */
+const LEADING_JUNK = /^\s*(?:premiere|exclusive|out now|free\s*(?:download|dl))\s*[:|\-–—]\s*/i;
 const TRAILING_JUNK = /\s*[-|:]?\s*free\s*(?:download|dl)\s*$/i;
 const ARTIST_SEPARATOR = /\s*(?:,|&|×|\band\b|\bx\b|\bvs\.?|\bfeat\.?|\bft\.?|\bfeaturing|\bwith)\s*/i;
 
-/** Lowercase, no accents, `&` as "and", letters and digits separated by single spaces. */
+/** Letters that do not decompose into a base letter plus an accent, so NFKD leaves them alone. */
+const FOLDED: Record<string, string> = { ø: "o", đ: "d", ł: "l", æ: "ae", œ: "oe", ß: "ss", þ: "th", ð: "d", ı: "i" };
+export const SPECIAL_LETTERS = /[øđłæœßþðı]/gi;
+
+/** Lowercase, no accents, `ø` as "o", `&` as "and", letters and digits separated by single spaces. */
 export function normalize(text: string): string {
     return text
         .normalize("NFKD")
-        .replace(/\p{M}/gu, "")
         .toLowerCase()
+        .replace(SPECIAL_LETTERS, (c) => FOLDED[c] ?? c)
+        .replace(/\p{M}/gu, "")
         .replace(/&/g, " and ")
         .replace(/[^\p{L}\p{N}]+/gu, " ")
         .trim();
@@ -43,13 +50,15 @@ function splitArtists(text: string): string[] {
 }
 
 /**
- * Splits a SoundCloud title into artists, title and mix. Junk groups (`[FREE DL]`, `(Premiere)`) are dropped,
- * `(feat. X)` joins the artists, and the last group that names a mix (`(Foo Remix)`) becomes `mix`.
+ * Splits a SoundCloud title into artists, title and mix. Junk groups (`[FREE DL]`, `(Premiere)`) and any other
+ * square-bracket tag (a label or catalogue number: `[Revised Record]`, `[TTC002]`) are dropped, `(feat. X)` joins the
+ * artists, and the last group that names a mix (`(Foo Remix)`) becomes `mix`. A leading `Premiere |` is dropped too.
  */
 export function parseTrack(track: SoundCloudTrack): ParsedTrack {
     const featured: string[] = [];
     let mix = "";
     let text = track.title.replace(/\s+/g, " ").trim();
+    while (LEADING_JUNK.test(text)) text = text.replace(LEADING_JUNK, "");
 
     text = text.replace(GROUP, (group, inner: string) => {
         const content = inner.trim();
@@ -62,7 +71,7 @@ export function parseTrack(track: SoundCloudTrack): ParsedTrack {
             mix = content;
             return "";
         }
-        return JUNK_WORD.test(content) ? "" : group;
+        return JUNK_WORD.test(content) || group.startsWith("[") ? "" : group;
     });
     text = text.replace(TRAILING_JUNK, "").replace(/\s+/g, " ").trim();
 

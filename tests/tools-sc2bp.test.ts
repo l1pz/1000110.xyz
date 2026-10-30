@@ -14,6 +14,13 @@ const candidate = (over: Partial<Candidate> = {}): Candidate => ({
     ...over,
 });
 
+describe("normalize letters that NFKD leaves alone", () => {
+    it("folds ø, đ, ł, æ, ß", () => {
+        expect(normalize("AREA ØNE")).toBe("area one");
+        expect(normalize("Łukasz Đorđe Æ Straße")).toBe("lukasz dorde ae strasse");
+    });
+});
+
 describe("normalize", () => {
     it("drops case, accents and punctuation", () => {
         expect(normalize("  Café  del Mar!! ")).toBe("cafe del mar");
@@ -77,6 +84,35 @@ describe("parseTrack", () => {
         });
     });
 
+    it("drops a leading Premiere or Free Download, in any case and with any separator", () => {
+        expect(track("Premiere | AREA ØNE - Rolling Dice")).toMatchObject({
+            artists: ["AREA ØNE"],
+            title: "Rolling Dice",
+        });
+        expect(track("PREMIERE : Joey Risdon - Without Drugs [RR014]")).toMatchObject({
+            artists: ["Joey Risdon"],
+            title: "Without Drugs",
+        });
+        expect(track("FREE DOWNLOAD | Da Hool - Meet Her (RBX EDIT)")).toMatchObject({
+            artists: ["Da Hool"],
+            title: "Meet Her",
+            mix: "RBX EDIT",
+        });
+        expect(track("Premiere: Free Download - A - B").artists).toEqual(["A"]);
+    });
+
+    it("drops label and catalogue tags in square brackets", () => {
+        expect(track("SVĒR - Back To The Sound [TTC002]").title).toBe("Back To The Sound");
+        expect(track("Doruksen, Denis Dekay - MAVI [Revised Record]").title).toBe("MAVI");
+        expect(track("blckr thn blck - you high baby? [No Mercy]").title).toBe("you high baby?");
+        expect(track("Lucas Campagna - LML [TT01] (DXPE Remix)")).toMatchObject({ title: "LML", mix: "DXPE Remix" });
+    });
+
+    it("keeps a mix in square brackets and a non-mix group in parentheses", () => {
+        expect(track("A - B [Dixon Remix]").mix).toBe("Dixon Remix");
+        expect(track("A - B (Part 2)").title).toBe("B (Part 2)");
+    });
+
     it("keeps the duration", () => {
         expect(track("A - B", "x", 372).durationSec).toBe(372);
     });
@@ -118,6 +154,14 @@ describe("scoreCandidate", () => {
         expect(scoreCandidate(parsed, candidate({ durationSec: null })).parts.duration).toBe(0.5);
     });
 
+    it("finds AREA ØNE when Beatport spells it AREA NE", () => {
+        const area = track("AREA ØNE - Dutch Bounce");
+        expect(scoreCandidate(area, candidate({ artists: ["AREA NE"] })).parts.artist).toBe(1);
+        expect(scoreCandidate(area, candidate({ artists: ["AREA ØNE"] })).parts.artist).toBe(1);
+        expect(scoreCandidate(area, candidate({ artists: ["AREA ONE"] })).parts.artist).toBe(1);
+        expect(scoreCandidate(area, candidate({ artists: ["Someone"] })).parts.artist).toBe(0);
+    });
+
     it("finds artists as whole words", () => {
         expect(scoreCandidate(track("Sol - Higher State"), candidate()).parts.artist).toBe(0);
         expect(
@@ -143,9 +187,19 @@ describe("matchTrack", () => {
         expect(result.verdict).toBe("match");
     });
 
-    it("sends a wrong artist with the same title to maybe, never match", () => {
+    it("sends a wrong artist with the same title and the same length to maybe, never match", () => {
         const result = matchTrack(parsed, [candidate({ artists: ["Someone Else"] })]);
         expect(result.verdict).toBe("maybe");
+    });
+
+    it("does not suggest a track that shares only the title: other artist, other length", () => {
+        const result = matchTrack(parsed, [candidate({ artists: ["Someone Else"], durationSec: 470 })]);
+        expect(result.verdict).toBe("none");
+    });
+
+    it("still suggests a same-title track by other artists when the artist was only guessed", () => {
+        const guessed = track("Higher State", "Some Label", 400);
+        expect(matchTrack(guessed, [candidate({ artists: ["Someone Else"], durationSec: 470 })]).verdict).toBe("maybe");
     });
 
     it("calls an unrelated result none", () => {

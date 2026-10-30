@@ -1,0 +1,671 @@
+[
+ {
+  "parsed": {
+   "artists": [
+    "SVĒR"
+   ],
+   "title": "Back To The Sound",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "none",
+  "best": {
+   "id": 20821940,
+   "score": 0.65
+  },
+  "ranked": [
+   20821940,
+   23923394,
+   18983505,
+   16254468,
+   28490889
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Simon Haex"
+   ],
+   "title": "Turn Up The Bass",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "none",
+  "best": {
+   "id": 23716097,
+   "score": 0.61
+  },
+  "ranked": [
+   23716097,
+   28807819,
+   30364552,
+   803885,
+   803887
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "AREA ØNE"
+   ],
+   "title": "Move Your Body",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 19376256,
+   "score": 1
+  },
+  "ranked": [
+   19376256,
+   10350394,
+   4847054,
+   12635556,
+   15858919
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Sara Landry"
+   ],
+   "title": "Speaker Freaker",
+   "mix": "",
+   "artistGuessed": true
+  },
+  "verdict": "match",
+  "best": {
+   "id": 24534270,
+   "score": 1
+  },
+  "ranked": [
+   24534270,
+   18032595,
+   8342768,
+   11276197,
+   6041022
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Veseli"
+   ],
+   "title": "Swords",
+   "mix": "",
+   "artistGuessed": true
+  },
+  "verdict": "match",
+  "best": {
+   "id": 18754107,
+   "score": 1
+  },
+  "ranked": [
+   18754107,
+   15236370,
+   23941324,
+   4722838,
+   14752383
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "AREA ØNE"
+   ],
+   "title": "Dutch Bounce",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 19376254,
+   "score": 1
+  },
+  "ranked": [
+   19376254,
+   1893242,
+   19309191,
+   20317994,
+   7660032
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "CARV",
+    "Vortek's"
+   ],
+   "title": "Nothing Can Stop Us",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 19479979,
+   "score": 1
+  },
+  "ranked": [
+   19479979,
+   30933121,
+   9203560,
+   9545428,
+   20764678
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "AREA ØNE"
+   ],
+   "title": "Music Is the Answer",
+   "mix": "",
+   "artistGuessed": true
+  },
+  "verdict": "maybe",
+  "best": {
+   "id": 17738706,
+   "score": 0.8
+  },
+  "ranked": [
+   17738706,
+   29176699,
+   15739770,
+   769277,
+   464816
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "LESSSS",
+    "WILLIAM LUCK"
+   ],
+   "title": "93 HARDCORE",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 18660543,
+   "score": 1
+  },
+  "ranked": [
+   18660543,
+   15943593,
+   22870478,
+   19595604,
+   19016310
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Klangkuenstler",
+    "Sant"
+   ],
+   "title": "Toter Schmetterling",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 19462391,
+   "score": 0.9
+  },
+  "ranked": [
+   19462391,
+   20105152,
+   20155856,
+   17045130,
+   10356860
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "AREA ØNE",
+    "N00M1"
+   ],
+   "title": "Rolling Dice",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "maybe",
+  "best": {
+   "id": 20370517,
+   "score": 0.75
+  },
+  "ranked": [
+   20370517,
+   15723408,
+   30745118,
+   790707,
+   18965308
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "DYEN"
+   ],
+   "title": "Living In Another Reality",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 19458489,
+   "score": 1
+  },
+  "ranked": [
+   19458489,
+   24498821,
+   28188889,
+   1605565,
+   14372942
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Basswell",
+    "DEV"
+   ],
+   "title": "Kick Bass In Your Face",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 19570329,
+   "score": 1
+  },
+  "ranked": [
+   19570329,
+   28328639,
+   16190245,
+   18548729,
+   21062770
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "AREA ØNE"
+   ],
+   "title": "Wanna Dance",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 19309191,
+   "score": 1
+  },
+  "ranked": [
+   19309191,
+   17757688,
+   17308488,
+   17821017,
+   19018188
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Jaimy Lorenzo"
+   ],
+   "title": "Nobody",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "none",
+  "best": {
+   "id": 20788682,
+   "score": 0.65
+  },
+  "ranked": [
+   20788682,
+   18573342,
+   18143463,
+   21357834,
+   18049746
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Trypdø",
+    "FØSS"
+   ],
+   "title": "Digital Impostor",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "none",
+  "best": {
+   "id": 30604084,
+   "score": 0.524
+  },
+  "ranked": [
+   30604084,
+   20744459,
+   29788490,
+   4463459,
+   24467704
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "AREA ØNE",
+    "THISO"
+   ],
+   "title": "Dimension",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "none",
+  "best": {
+   "id": 26848003,
+   "score": 0.67
+  },
+  "ranked": [
+   26848003,
+   17198120,
+   18222120,
+   17732855,
+   18906332
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Dissonne"
+   ],
+   "title": "Kiss Me",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "none",
+  "best": {
+   "id": 18859454,
+   "score": 0.65
+  },
+  "ranked": [
+   18859454,
+   18574489,
+   16797290,
+   17824996,
+   28670343
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Mosmoz"
+   ],
+   "title": "Start All Over Again",
+   "mix": "Original mix",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 17574613,
+   "score": 1
+  },
+  "ranked": [
+   17574613,
+   1736863,
+   29084012,
+   1843438,
+   11127604
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "AREA ØNE"
+   ],
+   "title": "Renegade Mastah",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "none",
+  "best": {
+   "id": 6863164,
+   "score": 0.67
+  },
+  "ranked": [
+   6863164,
+   21308840,
+   22809042,
+   30091984,
+   30050259
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Charles Da Moss"
+   ],
+   "title": "Experimental Seduction",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "none",
+  "best": {
+   "id": 16950566,
+   "score": 0.509375
+  },
+  "ranked": [
+   16950566,
+   6753181,
+   20386783,
+   22377435,
+   19603958
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Connor O'keefe"
+   ],
+   "title": "Lemme Tell U",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "none",
+  "best": {
+   "id": 14491480,
+   "score": 0.65
+  },
+  "ranked": [
+   14491480,
+   19727379,
+   23698841,
+   19727406,
+   14381118
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Joey Risdon"
+   ],
+   "title": "Without Drugs",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "none",
+  "best": {
+   "id": 5551681,
+   "score": 0.65
+  },
+  "ranked": [
+   5551681,
+   6656637,
+   8654699,
+   9340453,
+   18392134
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Mid But I'm Fine"
+   ],
+   "title": "Can You Hear That?",
+   "mix": "",
+   "artistGuessed": true
+  },
+  "verdict": "match",
+  "best": {
+   "id": 18320278,
+   "score": 1
+  },
+  "ranked": [
+   18320278,
+   22355502,
+   14034426,
+   15936270,
+   15207077
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "LeStrange",
+    "Benefice"
+   ],
+   "title": "Polizei",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 30856744,
+   "score": 1
+  },
+  "ranked": [
+   30856744,
+   17978846,
+   18596286,
+   17978847,
+   17978848
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Joey Risdon"
+   ],
+   "title": "From Ashes",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 18392135,
+   "score": 1
+  },
+  "ranked": [
+   18392135,
+   15380597,
+   30728746,
+   25472638,
+   4324551
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "blckr thn blck"
+   ],
+   "title": "you high baby?",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 18477452,
+   "score": 1
+  },
+  "ranked": [
+   18477452,
+   20388850,
+   18932097,
+   1387658,
+   18855578
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Da Hool"
+   ],
+   "title": "Meet Her At The Love Parade",
+   "mix": "RBX EDIT",
+   "artistGuessed": false
+  },
+  "verdict": "maybe",
+  "best": {
+   "id": 18982592,
+   "score": 0.7
+  },
+  "ranked": [
+   18982592,
+   1312005,
+   21423789,
+   1178373,
+   8762243
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Lucas Campagna"
+   ],
+   "title": "LML",
+   "mix": "DXPE Remix",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 16181614,
+   "score": 1
+  },
+  "ranked": [
+   16181614,
+   16181610,
+   16181606,
+   16181602,
+   16181599
+  ]
+ },
+ {
+  "parsed": {
+   "artists": [
+    "Doruksen",
+    "Denis Dekay"
+   ],
+   "title": "MAVI",
+   "mix": "",
+   "artistGuessed": false
+  },
+  "verdict": "match",
+  "best": {
+   "id": 18197256,
+   "score": 1
+  },
+  "ranked": [
+   18197256,
+   18197258,
+   18161116,
+   18161118,
+   20209415
+  ]
+ }
+]

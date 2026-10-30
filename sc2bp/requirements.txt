@@ -1,0 +1,5 @@
+fastapi==0.115.*
+uvicorn==0.32.*
+httpx==0.28.*
+# not pinned on purpose: yt-dlp breaks whenever SoundCloud changes, so a rebuild must pick up the newest release
+yt-dlp

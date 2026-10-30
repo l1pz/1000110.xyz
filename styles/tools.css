@@ -227,3 +227,181 @@
     background: var(--bg-soft);
     color: var(--yellow);
 }
+
+/* soundcloud to beatport: one block per track, Beatport results as full-width buttons (no native select) */
+.tool .btn:disabled {
+    border-color: var(--gray);
+    color: var(--gray);
+    cursor: default;
+}
+
+.tool .trk {
+    margin-bottom: 1.2em;
+}
+
+.tool .trk-head {
+    margin-bottom: 0.3em;
+    overflow-wrap: anywhere;
+}
+
+.tool .mark {
+    display: inline-block;
+    width: 4ch;
+}
+
+.tool .mark.ok {
+    color: var(--green);
+}
+
+.tool .mark.maybe {
+    color: var(--yellow);
+}
+
+.tool .mark.none {
+    color: var(--red);
+}
+
+.tool .cand {
+    display: block;
+    width: 100%;
+    margin: 0 0 0.4em;
+    padding: 0.4em 1.5ch;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.tool .cand.active .dim {
+    color: inherit;
+}
+
+.tool .btn.link {
+    min-height: 0;
+    margin-bottom: 0.4em;
+    padding: 0;
+    border: 0;
+    color: var(--aqua);
+    text-decoration: underline;
+}
+
+/* soundcloud to beatport: the jobs list, one job, the review */
+.tool .back {
+    display: inline-block;
+    margin-bottom: 1em;
+}
+
+.tool .jobrow {
+    padding: 0.5em 0;
+}
+
+.tool .jobhead,
+.tool .jobinfo,
+.tool .bar {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.tool .jobrow .mark {
+    width: 5ch;
+}
+
+.tool .jobinfo,
+.tool .jobrow .bar {
+    padding-left: 5ch;
+}
+
+.tool .mark.run {
+    color: var(--aqua);
+}
+
+.tool .mark.warn {
+    color: var(--yellow);
+}
+
+.tool .mark.bad {
+    color: var(--red);
+}
+
+.tool .mark.idle {
+    color: var(--gray);
+}
+
+.tool .jobname {
+    margin: 0 0 0.4em;
+    color: var(--yellow);
+    font: inherit;
+    font-weight: bold;
+    overflow-wrap: anywhere;
+}
+
+.tool .jobstate {
+    margin: 0;
+}
+
+.tool .jobbody .bar {
+    margin: 0.4em 0 0;
+}
+
+.tool .jobbody p {
+    overflow-wrap: anywhere;
+}
+
+.tool .result {
+    margin: 1em 0 0.2em;
+    color: var(--green);
+}
+
+.tool .resultlines {
+    margin-top: 0;
+    white-space: pre-line;
+}
+
+.tool .notice.bad {
+    color: var(--red);
+}
+
+.tool .notice.warn {
+    color: var(--yellow);
+}
+
+.tool .notice.idle {
+    color: var(--gray);
+}
+
+.tool .searchbox {
+    display: flex;
+    gap: 0.6em 1ch;
+    margin-bottom: 0.4em;
+}
+
+.tool .searchbox input {
+    flex: 1;
+    min-width: 0;
+}
+
+.tool .trknote {
+    min-height: 0;
+    margin: 0 0 0.4em;
+}
+
+.tool .applybar {
+    position: sticky;
+    bottom: calc(2.8em + env(safe-area-inset-bottom, 0px));
+    z-index: 1;
+    margin-top: 1em;
+    padding: 0.6em 0;
+    border-top: 1px solid var(--gray);
+    background: var(--bg);
+}
+
+.tool .jobstate .mark {
+    margin-right: 1ch;
+}
+
+.tool .jobrow .bar {
+    color: var(--fg);
+}
+
+.tool .trk .dim {
+    margin: 0 0 0.4em;
+}

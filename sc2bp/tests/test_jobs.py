@@ -87,7 +87,7 @@ def test_jobs_are_listed_newest_first(world):
     world.run("https://soundcloud.com/a/sets/1")
     world.clock.now += 5
     world.run("https://soundcloud.com/a/sets/2")
-    assert [j["url"][-1] for j in world.runner.list()] == ["2", "1"]
+    assert [j["url"][-1] for j in world.runner.list_jobs()] == ["2", "1"]
 
 
 # --- crashes and restarts ------------------------------------------------------------------------------------
@@ -108,7 +108,7 @@ def test_a_crash_while_matching_resumes_without_redoing_work(world, monkeypatch)
 
     world.bp.search_hook = None
     restarted = world.start()
-    [job] = restarted.list()
+    [job] = restarted.list_jobs()
     assert job["state"] == "queued"  # was "running" when the server died
     restarted.process_next()
     job = restarted.get(job["id"])
@@ -151,7 +151,7 @@ def test_a_crash_loses_at_most_the_searches_since_the_last_save(world):
     world.bp.search_hook = None
     restarted = world.start()
     restarted.process_next()
-    assert restarted.list()[0]["state"] == "done"
+    assert restarted.list_jobs()[0]["state"] == "done"
     redone = len(world.bp.queries) - len(set(world.bp.queries))
     assert 0 < redone <= jobs.SAVE_EVERY
 
@@ -175,7 +175,7 @@ def test_a_job_file_that_is_damaged_is_skipped_not_fatal(world, tmp_path):
     world.run()
     (tmp_path / "jobs" / "deadbeef.json").write_text("{not json")
     (tmp_path / "jobs" / "abcd1234.json").write_text(json.dumps({"id": "../../etc", "tracks": [], "state": "done"}))
-    assert len(world.start().list()) == 1
+    assert len(world.start().list_jobs()) == 1
 
 
 # --- errors --------------------------------------------------------------------------------------------------
@@ -208,7 +208,7 @@ def test_the_countdown_is_visible_while_waiting(world):
     def flaky(n):
         if n == 1:
             raise transient("Beatport answered 503")
-        job = world.runner.list()[0]
+        job = world.runner.list_jobs()[0]
         seen.append(job["waiting"])
 
     world.bp.search_hook = flaky
@@ -358,7 +358,7 @@ def test_a_running_job_cannot_be_deleted_but_others_can(world):
     world.runner.process_next()
     assert outcome["error"] == "cancel the job first"
     world.runner.delete(job_id)
-    assert world.runner.list() == []
+    assert world.runner.list_jobs() == []
     assert not list((world.dir / "jobs").glob("*.json"))
     with pytest.raises(KeyError):
         world.runner.get(job_id)
@@ -504,4 +504,4 @@ def test_a_save_survives_a_file_that_is_briefly_locked(world, monkeypatch):
 
     monkeypatch.setattr(jobs.os, "replace", flaky)
     world.runner.submit(PLAYLIST)
-    assert len(calls) == 2 and len(world.start().list()) == 1
+    assert len(calls) == 2 and len(world.start().list_jobs()) == 1

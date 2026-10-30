@@ -154,7 +154,7 @@ class Runner:
             self._wake.notify_all()
             return self.summary(job), True
 
-    def list(self) -> list[dict]:
+    def list_jobs(self) -> list[dict]:
         with self._lock:
             return [self.summary(j) for j in sorted(self._jobs.values(), key=lambda j: -j["created"])]
 

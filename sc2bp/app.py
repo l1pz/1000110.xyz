@@ -91,7 +91,7 @@ def start(body: JobIn, runner: Runner = Depends(get_runner)) -> dict:
 
 @router.get("/jobs")
 def jobs(runner: Runner = Depends(get_runner)) -> dict:
-    return {"jobs": runner.list()}
+    return {"jobs": runner.list_jobs()}
 
 
 @router.get("/jobs/{job_id}")

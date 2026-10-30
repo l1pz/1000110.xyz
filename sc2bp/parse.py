@@ -117,6 +117,11 @@ def parse_track(title: str, uploader: str, duration_sec: float | None) -> Parsed
     )
 
 
+def search_query(parsed: Parsed) -> str:
+    """The Beatport search text for a track: its artists and title; the mix is left to the scoring."""
+    return re.sub(r"\s+", " ", " ".join([*parsed.artists, parsed.title])).strip()
+
+
 def label(parsed: Parsed) -> str:
     """`Artist, Artist - Title (Mix)`, the way a track is shown in a list."""
     mix = f" ({parsed.mix})" if parsed.mix else ""

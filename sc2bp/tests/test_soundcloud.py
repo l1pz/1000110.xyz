@@ -126,8 +126,9 @@ def test_yt_dlp_failure_gives_a_playlist_error_without_its_stderr():
 
 def test_timeout_bad_output_empty_and_huge_playlists():
     url = "https://soundcloud.com/u/sets/s"
-    with pytest.raises(PlaylistError, match="too long"):
+    with pytest.raises(PlaylistError, match="too long") as timed_out:
         list_playlist(url, fake_run(error=subprocess.TimeoutExpired("yt-dlp", 1)))
+    assert timed_out.value.retryable
     with pytest.raises(PlaylistError, match="could not read"):
         list_playlist(url, fake_run("not json"))
     with pytest.raises(PlaylistError, match="no tracks"):

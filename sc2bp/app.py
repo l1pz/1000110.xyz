@@ -1,59 +1,69 @@
-"""sc2bp service: lists a SoundCloud playlist, searches Beatport, creates the playlist. It makes no judgement about
-matches (the browser scores them, see src/features/tools/tools/sc2bp/). Traefik puts the tinyauth forward auth in front
-of every route, and tinyauth is owner-only, so there is no user check here."""
+"""sc2bp service: SoundCloud playlist to Beatport playlist, as background jobs that go on with the page closed.
+
+Traefik puts the tinyauth forward auth in front of every route, and tinyauth is owner-only, so there is no user check
+here. The work is in `jobs.py`; this file is the HTTP shape of it."""
 
 import logging
 import os
+import threading
+from contextlib import asynccontextmanager
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
 
+import soundcloud
 from beatport import Beatport, BeatportError
-from fastapi import APIRouter, Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
+from jobs import JobError, Runner
 from pydantic import BaseModel, Field, StringConstraints
-from soundcloud import BadUrl, PlaylistError, list_playlist, read_tracks
+from soundcloud import BadUrl
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
 
 DATA_DIR = Path(os.environ.get("SC2BP_DATA", "/data"))
-MAX_QUERIES = 10
 
 
-class PlaylistIn(BaseModel):
+class JobIn(BaseModel):
     url: str = Field(max_length=300)
+    name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)] = ""
 
 
-class TracksIn(BaseModel):
-    urls: list[Annotated[str, StringConstraints(max_length=300)]] = Field(min_length=1, max_length=MAX_QUERIES)
+class PickIn(BaseModel):
+    id: int | None
 
 
 class SearchIn(BaseModel):
-    queries: list[Annotated[str, StringConstraints(max_length=200)]] = Field(max_length=MAX_QUERIES)
-
-
-class CreateIn(BaseModel):
-    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
-    ids: list[int] = Field(min_length=1, max_length=500)
+    query: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
 
 @lru_cache
-def get_beatport() -> Beatport:
+def beatport_client() -> Beatport:
     username = os.environ.get("BEATPORT_USERNAME", "")
     password = os.environ.get("BEATPORT_PASSWORD", "")
     if not username or not password:
-        raise HTTPException(503, "the Beatport login is not configured on the server")
+        raise BeatportError("the Beatport login is not configured on the server", fatal=True)
     return Beatport(username, password, DATA_DIR / "token.json")
 
 
-def get_lister():
-    return list_playlist
+def get_runner(request: Request) -> Runner:
+    return request.app.state.runner
 
 
-def get_track_reader():
-    return read_tracks
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    stop = threading.Event()
+    app.state.runner = Runner(DATA_DIR, soundcloud, beatport_client)
+    worker = threading.Thread(target=app.state.runner.run_forever, args=(stop,), name="sc2bp-worker", daemon=True)
+    worker.start()
+    yield
+    stop.set()
 
 
 router = APIRouter(prefix="/api/sc2bp")
+
+
+def gone(error: KeyError) -> HTTPException:
+    return HTTPException(404, "no such job or track")
 
 
 @router.get("/health")
@@ -67,42 +77,103 @@ def me() -> dict:
     return {"ok": True}
 
 
-@router.post("/playlist")
-def playlist(body: PlaylistIn, list_links=Depends(get_lister)) -> dict:
-    """The playlist's name and track links (fast); `/tracks` then resolves them a few at a time."""
+@router.post("/jobs")
+def start(body: JobIn, runner: Runner = Depends(get_runner)) -> dict:
+    """Starts a conversion; a link that is already being converted gives that job back (`created: false`)."""
     try:
-        return list_links(body.url)
+        job, created = runner.submit(body.url, body.name)
     except BadUrl as error:
         raise HTTPException(400, str(error)) from None
-    except PlaylistError as error:
-        raise HTTPException(502, str(error)) from None
+    except JobError as error:
+        raise HTTPException(409, str(error)) from None
+    return {"job": job, "created": created}
 
 
-@router.post("/tracks")
-def tracks(body: TracksIn, read=Depends(get_track_reader)) -> dict:
-    """Title, uploader and length of up to 10 track links, in order; an unreadable track is blank."""
+@router.get("/jobs")
+def jobs(runner: Runner = Depends(get_runner)) -> dict:
+    return {"jobs": runner.list()}
+
+
+@router.get("/jobs/{job_id}")
+def job(job_id: str, runner: Runner = Depends(get_runner)) -> dict:
     try:
-        return {"tracks": read(body.urls)}
-    except BadUrl as error:
+        return {"job": runner.get(job_id)}
+    except KeyError as error:
+        raise gone(error) from None
+
+
+@router.get("/jobs/{job_id}/tracks")
+def tracks(
+    job_id: str,
+    which: str = Query("unmatched", alias="filter"),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(25, ge=1, le=100),
+    runner: Runner = Depends(get_runner),
+) -> dict:
+    try:
+        return runner.tracks(job_id, which, offset, limit)
+    except KeyError as error:
+        raise gone(error) from None
+    except JobError as error:
         raise HTTPException(400, str(error)) from None
 
 
-@router.post("/search")
-def search(body: SearchIn, beatport: Beatport = Depends(get_beatport)) -> dict:
+def action(call, job_id: str, *args) -> dict:
     try:
-        # a blank query (a track with no readable title) finds nothing and costs no call
-        return {"results": [beatport.search(q) if q.strip() else [] for q in body.queries]}
-    except BeatportError as error:
-        raise HTTPException(502, str(error)) from None
+        return {"job": call(job_id, *args)}
+    except KeyError as error:
+        raise gone(error) from None
+    except JobError as error:
+        raise HTTPException(409, str(error)) from None
 
 
-@router.post("/create")
-def create(body: CreateIn, beatport: Beatport = Depends(get_beatport)) -> dict:
+@router.post("/jobs/{job_id}/cancel")
+def cancel(job_id: str, runner: Runner = Depends(get_runner)) -> dict:
+    return action(runner.cancel, job_id)
+
+
+@router.post("/jobs/{job_id}/retry")
+def retry(job_id: str, runner: Runner = Depends(get_runner)) -> dict:
+    return action(runner.retry, job_id)
+
+
+@router.post("/jobs/{job_id}/apply")
+def apply(job_id: str, runner: Runner = Depends(get_runner)) -> dict:
+    return action(runner.apply, job_id)
+
+
+@router.delete("/jobs/{job_id}")
+def delete(job_id: str, runner: Runner = Depends(get_runner)) -> dict:
     try:
-        return beatport.create_playlist(body.name, list(dict.fromkeys(body.ids)))
+        runner.delete(job_id)
+    except KeyError as error:
+        raise gone(error) from None
+    except JobError as error:
+        raise HTTPException(409, str(error)) from None
+    return {"ok": True}
+
+
+@router.post("/jobs/{job_id}/tracks/{index}/pick")
+def pick(job_id: str, index: int, body: PickIn, runner: Runner = Depends(get_runner)) -> dict:
+    try:
+        return {"track": runner.pick(job_id, index, body.id)}
+    except KeyError as error:
+        raise gone(error) from None
+    except JobError as error:
+        raise HTTPException(409, str(error)) from None
+
+
+@router.post("/jobs/{job_id}/tracks/{index}/search")
+def search(job_id: str, index: int, body: SearchIn, runner: Runner = Depends(get_runner)) -> dict:
+    try:
+        return {"track": runner.search_track(job_id, index, body.query)}
+    except KeyError as error:
+        raise gone(error) from None
+    except JobError as error:
+        raise HTTPException(409, str(error)) from None
     except BeatportError as error:
-        raise HTTPException(502, str(error)) from None
+        raise HTTPException(503 if error.fatal else 502, str(error)) from None
 
 
-app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 app.include_router(router)

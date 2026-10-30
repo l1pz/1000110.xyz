@@ -28,7 +28,24 @@ PLAYLIST_URL = "https://www.beatport.com/library/playlists/"
 
 
 class BeatportError(Exception):
-    """Beatport refused, changed, or could not be reached. The message is safe to show the owner."""
+    """Beatport refused, changed, or could not be reached. The message is safe to show the owner.
+
+    `retryable`: worth trying again later (rate limit, server error, no connection); `retry_after` is Beatport's wait
+    in seconds, when it said. `fatal`: nothing will work until the owner acts (login refused, not configured)."""
+
+    def __init__(self, message: str, retryable: bool = False, retry_after: float | None = None, fatal: bool = False):
+        super().__init__(message)
+        self.retryable = retryable
+        self.retry_after = retry_after
+        self.fatal = fatal
+
+
+def retry_after(response: httpx.Response) -> float | None:
+    """Seconds Beatport asked us to wait (the `Retry-After` header), or None."""
+    try:
+        return max(0.0, float(response.headers.get("retry-after", "")))
+    except ValueError:
+        return None
 
 
 def candidate(track: dict) -> dict:
@@ -74,7 +91,7 @@ class Beatport:
             found = CLIENT_ID.findall(http.get(f"https://api.beatport.com{src}").text)
             if found:
                 return found[0]
-        raise BeatportError("could not find Beatport's public client id (the docs page changed?)")
+        raise BeatportError("could not find Beatport's public client id (the docs page changed?)", fatal=True)
 
     def _store(self, data: dict, client_id: str) -> dict:
         try:
@@ -103,7 +120,7 @@ class Beatport:
                 login = http.post(f"{API}/auth/login/", json={"username": self._username, "password": self._password})
                 login.raise_for_status()
                 if "username" not in login.json():
-                    raise BeatportError("Beatport refused the login (wrong username or password?)")
+                    raise BeatportError("Beatport refused the login (wrong username or password?)", fatal=True)
                 authorize = http.get(
                     f"{API}/auth/o/authorize/",
                     params={"response_type": "code", "client_id": client_id, "redirect_uri": REDIRECT_URI},
@@ -111,7 +128,7 @@ class Beatport:
                 )
                 codes = parse_qs(urlparse(authorize.headers.get("location", "")).query).get("code")
                 if not codes:
-                    raise BeatportError("Beatport gave no authorization code (the login flow changed?)")
+                    raise BeatportError("Beatport gave no authorization code (the login flow changed?)", fatal=True)
                 answer = http.post(
                     f"{API}/auth/o/token/",
                     params={
@@ -124,9 +141,12 @@ class Beatport:
                 answer.raise_for_status()
                 return self._store(answer.json(), client_id)
         except httpx.HTTPStatusError as error:
-            raise BeatportError(f"Beatport login failed with HTTP {error.response.status_code}") from None
+            status = error.response.status_code
+            raise BeatportError(
+                f"Beatport login failed with HTTP {status}", retryable=status == 429 or status >= 500, fatal=status < 500
+            ) from None
         except httpx.HTTPError:
-            raise BeatportError("could not reach Beatport to log in") from None
+            raise BeatportError("could not reach Beatport to log in", retryable=True) from None
         except ValueError:
             raise BeatportError("Beatport's login answer was not JSON") from None
 
@@ -181,12 +201,18 @@ class Beatport:
                     with self._new_client() as http:
                         response = http.request(method, f"{API}{path}", headers=headers, follow_redirects=True, **kwargs)
                 except httpx.HTTPError:
-                    raise BeatportError("could not reach Beatport") from None
+                    raise BeatportError("could not reach Beatport", retryable=True) from None
                 if response.status_code == 401 and attempt == 0:
                     continue
                 if response.status_code >= 400:
-                    log.warning("%s %s answered %s: %s", method, path, response.status_code, response.text[:300])
-                    raise BeatportError(f"Beatport answered {response.status_code} for {method} {path}")
+                    status = response.status_code
+                    log.warning("%s %s answered %s: %s", method, path, status, response.text[:300])
+                    raise BeatportError(
+                        f"Beatport answered {status} for {method} {path}",
+                        retryable=status == 429 or status >= 500,
+                        retry_after=retry_after(response),
+                        fatal=status in (401, 403),
+                    )
                 try:
                     return response.json()
                 except ValueError:
@@ -197,17 +223,20 @@ class Beatport:
         data = self._request("GET", "/catalog/search/", params={"q": query, "per_page": 10, "type": "tracks"})
         return [candidate(t) for t in data.get("tracks") or [] if isinstance(t, dict) and "id" in t]
 
-    def create_playlist(self, name: str, ids: list[int]) -> dict:
+    def create_playlist(self, name: str) -> dict:
+        """An empty playlist: `{id, url}`."""
         playlist = self._request("POST", "/my/playlists/", json={"name": name})
         playlist_id = playlist.get("id")
         if not isinstance(playlist_id, int):
             raise BeatportError("Beatport created a playlist but did not say which one")
-        added = 0
-        for start in range(0, len(ids), ADD_BATCH):
-            batch = ids[start : start + ADD_BATCH]
-            items = self._request("POST", f"/my/playlists/{playlist_id}/tracks/bulk/", json={"track_ids": batch}).get(
-                "items"
-            )
-            # `items` lists what Beatport took; a track it cannot play (`track_available: false`) is not counted
-            added += len(batch) if items is None else sum(1 for i in items if i.get("track_available", True))
-        return {"name": name, "added": added, "url": f"{PLAYLIST_URL}{playlist_id}"}
+        return {"id": playlist_id, "url": f"{PLAYLIST_URL}{playlist_id}"}
+
+    def add_tracks(self, playlist_id: int, ids: list[int]) -> list[int]:
+        """Adds up to `ADD_BATCH` tracks; returns the ids Beatport took. A track it lists as not available (for this
+        account or region) is left out of the answer."""
+        if len(ids) > ADD_BATCH:
+            raise ValueError(f"add at most {ADD_BATCH} tracks at a time")
+        items = self._request("POST", f"/my/playlists/{playlist_id}/tracks/bulk/", json={"track_ids": ids}).get("items")
+        if items is None:
+            return list(ids)
+        return [i["track_id"] for i in items if isinstance(i, dict) and i.get("track_available", True) and "track_id" in i]

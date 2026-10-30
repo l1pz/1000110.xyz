@@ -15,6 +15,7 @@ class FakeBeatport:
         self.login_ok = True
         self.code = "CODE1"
         self.search_status = 200
+        self.search_headers: dict[str, str] = {}
         self.refused_tokens = 0  # how many API calls get a 401 before one is accepted
         self.available = True
         self.tokens_issued = 0
@@ -50,7 +51,7 @@ class FakeBeatport:
             return httpx.Response(301, headers={"location": f"/v4/catalog/search/?{request.url.query.decode()}"})
         if path == "/v4/catalog/search/":
             if self.search_status != 200:
-                return httpx.Response(self.search_status, text="secret body from beatport")
+                return httpx.Response(self.search_status, text="secret body from beatport", headers=self.search_headers)
             return httpx.Response(
                 200,
                 json={
@@ -225,16 +226,65 @@ def test_calls_are_spaced(world):
     assert any(0 < gap <= 0.4 for gap in clock.slept)
 
 
-def test_create_playlist_adds_in_batches_and_returns_the_link(world):
+def test_create_playlist_returns_the_id_and_the_link(world):
     fake, _, make, _ = world
-    made = make().create_playlist("My set", list(range(1, 121)))
-    assert made == {"name": "My set", "added": 120, "url": "https://www.beatport.com/library/playlists/99"}
-    bulk = [r for r in fake.requests if r.url.path.endswith("/tracks/bulk/")]
-    assert [len(json.loads(r.content)["track_ids"]) for r in bulk] == [50, 50, 20]
-    assert bulk[0].url.path == "/v4/my/playlists/99/tracks/bulk/"
+    made = make().create_playlist("My set")
+    assert made == {"id": 99, "url": "https://www.beatport.com/library/playlists/99"}
+    assert json.loads(fake.requests[-1].content) == {"name": "My set"}
 
 
-def test_tracks_beatport_cannot_play_are_not_counted(world):
+def test_add_tracks_posts_the_ids_and_returns_the_ones_beatport_took(world):
+    fake, _, make, _ = world
+    assert make().add_tracks(99, [1, 2, 3]) == [1, 2, 3]
+    bulk = fake.requests[-1]
+    assert bulk.url.path == "/v4/my/playlists/99/tracks/bulk/"
+    assert json.loads(bulk.content) == {"track_ids": [1, 2, 3]}
+
+
+def test_tracks_beatport_cannot_play_are_left_out_of_the_answer(world):
     fake, _, make, _ = world
     fake.available = False
-    assert make().create_playlist("x", [1, 2, 3])["added"] == 0
+    assert make().add_tracks(99, [1, 2, 3]) == []
+
+
+def test_add_tracks_refuses_more_than_one_batch(world):
+    _, _, make, _ = world
+    with pytest.raises(ValueError):
+        make().add_tracks(99, list(range(51)))
+
+
+@pytest.mark.parametrize(
+    ("status", "retryable", "fatal"),
+    [(429, True, False), (500, True, False), (503, True, False), (400, False, False), (403, False, True)],
+)
+def test_errors_say_whether_trying_again_could_help(world, status, retryable, fatal):
+    fake, _, make, _ = world
+    fake.search_status = status
+    with pytest.raises(BeatportError) as caught:
+        make().search("x")
+    assert (caught.value.retryable, caught.value.fatal) == (retryable, fatal)
+
+
+def test_a_rate_limit_carries_beatports_wait(world):
+    fake, _, make, _ = world
+    fake.search_status = 429
+    fake.search_headers = {"retry-after": "42"}
+    with pytest.raises(BeatportError) as caught:
+        make().search("x")
+    assert caught.value.retry_after == 42
+
+
+def test_a_refused_login_is_fatal_and_a_lost_connection_is_retryable(world, tmp_path):
+    fake, _, make, _ = world
+    fake.login_ok = False
+    with pytest.raises(BeatportError) as caught:
+        make().search("x")
+    assert caught.value.fatal and not caught.value.retryable
+
+    def dead(request):
+        raise httpx.ConnectError("no route")
+
+    bp = Beatport("me", "pw", tmp_path / "t.json", transport=httpx.MockTransport(dead), sleep=lambda s: None)
+    with pytest.raises(BeatportError) as caught:
+        bp.search("x")
+    assert caught.value.retryable and not caught.value.fatal

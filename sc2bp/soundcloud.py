@@ -18,12 +18,16 @@ HOSTS = {"soundcloud.com", "www.soundcloud.com", "m.soundcloud.com", "on.soundcl
 API_HOSTS = {"api.soundcloud.com", "api-v2.soundcloud.com"}
 API_TRACK = re.compile(r"/tracks/\d+")
 LIST_TIMEOUT_SECS = 120
-MAX_TRACKS = 300
+MAX_TRACKS = 1000
 WORKERS = 6
 
 
 class PlaylistError(Exception):
-    """The playlist could not be read."""
+    """The playlist could not be read. `retryable`: trying again later may work (a timeout)."""
+
+    def __init__(self, message: str, retryable: bool = False):
+        super().__init__(message)
+        self.retryable = retryable
 
 
 class BadUrl(PlaylistError):
@@ -80,7 +84,7 @@ def list_playlist(url: str, run=subprocess.run) -> dict:
         done = run(command, capture_output=True, text=True, timeout=LIST_TIMEOUT_SECS, check=True)
         data = json.loads(done.stdout)
     except subprocess.TimeoutExpired:
-        raise PlaylistError("reading the playlist took too long") from None
+        raise PlaylistError("reading the playlist took too long", retryable=True) from None
     except subprocess.CalledProcessError as error:
         log.warning("yt-dlp failed: %s", (error.stderr or "")[-500:])
         raise PlaylistError("yt-dlp could not read that playlist (private, deleted, or SoundCloud changed)") from None

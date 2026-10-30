@@ -227,3 +227,59 @@
     background: var(--bg-soft);
     color: var(--yellow);
 }
+
+/* soundcloud to beatport: one block per track, Beatport results as full-width buttons (no native select) */
+.tool .btn:disabled {
+    border-color: var(--gray);
+    color: var(--gray);
+    cursor: default;
+}
+
+.tool .trk {
+    margin-bottom: 1.2em;
+}
+
+.tool .trk-head {
+    margin-bottom: 0.3em;
+    overflow-wrap: anywhere;
+}
+
+.tool .mark {
+    display: inline-block;
+    width: 4ch;
+}
+
+.tool .mark.ok {
+    color: var(--green);
+}
+
+.tool .mark.maybe {
+    color: var(--yellow);
+}
+
+.tool .mark.none {
+    color: var(--red);
+}
+
+.tool .cand {
+    display: block;
+    width: 100%;
+    margin: 0 0 0.4em;
+    padding: 0.4em 1.5ch;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.tool .cand.active .dim {
+    color: inherit;
+}
+
+.tool .btn.link {
+    min-height: 0;
+    margin-bottom: 0.4em;
+    padding: 0;
+    border: 0;
+    color: var(--aqua);
+    text-decoration: underline;
+}

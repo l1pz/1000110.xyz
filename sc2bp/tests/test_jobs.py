@@ -412,6 +412,15 @@ def test_picking_a_suggestion_then_applying_adds_it_to_the_same_playlist(world):
     assert world.bp.created == ["My set"] and world.bp.added == [1000, 1001, 1005, 1002]
 
 
+def test_the_counts_follow_the_picks(world):
+    job = world.run()
+    assert (job["counts"]["maybe"], job["counts"]["none"], job["needsReview"]) == (2, 2, 4)
+    world.runner.pick(job["id"], 2, 1002)  # a "maybe" is picked
+    counts = world.runner.get(job["id"])["counts"]
+    assert (counts["maybe"], counts["match"], counts["picked"]) == (1, 3, 4)  # the pick moved one "maybe" out
+    assert counts["maybe"] + counts["none"] + counts["error"] == world.runner.get(job["id"])["needsReview"]
+
+
 def test_picking_can_be_undone_until_the_track_is_added(world):
     job = world.run()
     world.runner.pick(job["id"], 2, 1002)

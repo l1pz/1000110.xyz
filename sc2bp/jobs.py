@@ -309,9 +309,10 @@ class Runner:
             "finished": (1, 1),
         }[phase]
         counts = {
-            "match": count(lambda t: t["verdict"] == "match"),
-            "maybe": count(lambda t: t["verdict"] == "maybe"),
-            "none": count(lambda t: t["verdict"] == "none"),
+            # by where each track stands now: a pick moves a track out of "maybe" or "none"
+            "match": count(lambda t: t["verdict"] == "match" and t["picked"] is not None),
+            "maybe": count(lambda t: t["verdict"] in ("maybe", "match") and t["picked"] is None),
+            "none": count(lambda t: t["verdict"] == "none" and t["picked"] is None),
             "error": count(lambda t: t["state"] == "error"),
             "unreadable": count(lambda t: t["state"] == "unreadable"),
             "picked": count(lambda t: t["picked"] is not None),

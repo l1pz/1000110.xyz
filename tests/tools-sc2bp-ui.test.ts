@@ -121,6 +121,15 @@ describe("realApi", () => {
         expect(calls[0].init?.body).toBe(JSON.stringify({ queries: ["a b"] }));
     });
 
+    it("reads tracks in the order of the links and checks the count", async () => {
+        const track = { title: "A - B", uploader: "A", durationSec: 1 };
+        const urls = ["https://soundcloud.com/a/1", "https://soundcloud.com/a/2"];
+        const ok = realApi({ returnTo, fetch: reply(200, { tracks: [track, track] }) });
+        expect(await ok.tracks(urls)).toHaveLength(2);
+        const short = realApi({ returnTo, fetch: reply(200, { tracks: [track] }) });
+        await expect(short.tracks(urls)).rejects.toThrow("wrong number");
+    });
+
     it("rejects a search answer of the wrong length", async () => {
         const api = realApi({ returnTo, fetch: reply(200, { results: [] }) });
         await expect(api.search(["a"])).rejects.toThrow("wrong number");

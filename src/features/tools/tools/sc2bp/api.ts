@@ -1,9 +1,10 @@
 import type { Candidate } from "./match";
 import type { ParsedTrack, SoundCloudTrack } from "./parse";
 
+/** The playlist's name and its track links; `Api.tracks` turns links into titles a few at a time. */
 export interface PlaylistInfo {
     name: string;
-    tracks: SoundCloudTrack[];
+    urls: string[];
 }
 
 export interface Created {
@@ -18,6 +19,8 @@ export interface Api {
     /** Resolves when the visitor is logged in. */
     me(signal?: AbortSignal): Promise<void>;
     playlist(url: string, signal?: AbortSignal): Promise<PlaylistInfo>;
+    /** One track per link, in order; a private or deleted track comes back with an empty title. */
+    tracks(urls: string[], signal?: AbortSignal): Promise<SoundCloudTrack[]>;
     /** One list of candidates per query, in the same order. */
     search(queries: string[], signal?: AbortSignal): Promise<Candidate[][]>;
     create(name: string, ids: number[], signal?: AbortSignal): Promise<Created>;
@@ -32,7 +35,8 @@ export class AuthError extends Error {
 
 export class ApiError extends Error {}
 
-/** Tracks per search request: small enough to stay well inside a proxy timeout. */
+/** Links per `tracks` request and queries per `search` request: the server's limit, and short requests. */
+export const TRACK_BATCH = 10;
 export const SEARCH_BATCH = 10;
 
 export function chunk<T>(items: T[], size: number): T[][] {
@@ -116,6 +120,13 @@ export function realApi({
             await call("/me", signal);
         },
         playlist: (url, signal) => call<PlaylistInfo>("/playlist", signal, { url }),
+        async tracks(urls, signal) {
+            const { tracks } = await call<{ tracks: SoundCloudTrack[] }>("/tracks", signal, { urls });
+            if (!Array.isArray(tracks) || tracks.length !== urls.length) {
+                throw new ApiError("the server returned the wrong number of tracks");
+            }
+            return tracks;
+        },
         async search(queries, signal) {
             const { results } = await call<{ results: Candidate[][] }>("/search", signal, { queries });
             if (!Array.isArray(results) || results.length !== queries.length) {

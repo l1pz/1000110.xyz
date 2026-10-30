@@ -1,8 +1,13 @@
-import type { Api, Created, PlaylistInfo } from "./api";
+import type { Api, Created } from "./api";
 import type { Candidate } from "./match";
+import type { SoundCloudTrack } from "./parse";
 
 /** A fake server for `npm run dev`, so the screen can be looked at without the backend. Never bundled for production. */
-const tracks: PlaylistInfo["tracks"] = [
+const link = (n: number) => `https://soundcloud.com/demo/track-${n}`;
+
+const blank: SoundCloudTrack = { title: "", uploader: "", durationSec: null };
+
+const tracks: SoundCloudTrack[] = [
     { title: "Solomun - Higher State [FREE DL]", uploader: "Solomun", durationSec: 400 },
     { title: "Dixon - Transmoderna (Âme Remix)", uploader: "Innervisions", durationSec: 531 },
     { title: "Bonobo - Kerala (Live)", uploader: "Some Channel", durationSec: 301 },
@@ -40,7 +45,12 @@ export function fakeApi(): Api {
         },
         async playlist() {
             await pause(400);
-            return { name: "Demo set", tracks };
+            // one more link than there are tracks: the last one is private, to show the "could not be read" note
+            return { name: "Demo set", urls: [...tracks.map((_, i) => link(i)), link(tracks.length)] };
+        },
+        async tracks(urls) {
+            await pause(300);
+            return urls.map((url) => tracks[Number(url.slice(url.lastIndexOf("-") + 1))] ?? blank);
         },
         async search(queries) {
             await pause(400);

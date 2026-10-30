@@ -1,0 +1,29 @@
+services:
+  sc2bp:
+    build: .
+    image: sc2bp:local
+    container_name: sc2bp
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    cpus: 1
+    # BEATPORT_USERNAME and BEATPORT_PASSWORD live in .env on the server (never in the repo)
+    env_file: .env
+    environment:
+      SC2BP_DATA: /data
+    volumes:
+      - ./data:/data
+    networks: [proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.sc2bp.rule=Host(`1000110.xyz`) && PathPrefix(`/api/sc2bp`)
+      - traefik.http.routers.sc2bp.priority=100
+      - traefik.http.routers.sc2bp.entrypoints=websecure
+      - traefik.http.routers.sc2bp.tls.certresolver=cloudflare
+      - traefik.http.routers.sc2bp.middlewares=tinyauth
+      - traefik.http.services.sc2bp.loadbalancer.server.port=8000
+networks:
+  proxy:
+    external: true

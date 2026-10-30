@@ -1,8 +1,8 @@
 import type { Cleanup } from "../../types";
 import { button, buttonRow, lineInput, linkButton, statusLine, toolState } from "../../ui";
-import { type Api, AuthError, beatportUrl, chunk, realApi, SEARCH_BATCH, searchQuery } from "./api";
+import { type Api, AuthError, beatportUrl, chunk, realApi, SEARCH_BATCH, searchQuery, TRACK_BATCH } from "./api";
 import type { Scored } from "./match";
-import { parseTrack } from "./parse";
+import { parseTrack, type SoundCloudTrack } from "./parse";
 import { buildRows, formatTime, label, missingText, type Row, selectedIds, summary } from "./review";
 
 /** Set just before going to the login page, so a login that does not stick shows an error instead of looping. */
@@ -69,6 +69,7 @@ export async function mount(root: HTMLElement): Promise<Cleanup> {
     const list = node("div", "tracks");
     const result = node("p", "status");
     let rows: Row[] = [];
+    let skipped = 0;
     let busy = false;
 
     const fetchBtn = button("fetch tracks", () => void run());
@@ -84,8 +85,9 @@ export async function mount(root: HTMLElement): Promise<Cleanup> {
 
     function updateSummary(): void {
         const s = summary(rows);
+        const unread = skipped > 0 ? `. ${skipped} could not be read` : "";
         status.set(
-            `${rows.length} tracks: ${s.match} match, ${s.maybe} maybe, ${s.none} not found. ${s.selected} picked`,
+            `${rows.length} tracks: ${s.match} match, ${s.maybe} maybe, ${s.none} not found. ${s.selected} picked${unread}`,
         );
         createBtn.textContent = `create playlist (${s.selected})`;
         createBtn.disabled = busy || s.selected === 0;
@@ -169,13 +171,21 @@ export async function mount(root: HTMLElement): Promise<Cleanup> {
         try {
             status.set("reading the playlist...");
             const playlist = await api.playlist(link, abort.signal);
+            const read: SoundCloudTrack[] = [];
+            for (const batch of chunk(playlist.urls, TRACK_BATCH)) {
+                status.set(`reading tracks... ${read.length}/${playlist.urls.length}`);
+                read.push(...(await api.tracks(batch, abort.signal)));
+            }
+            const tracks = read.filter((t) => t.title.trim() !== "");
+            skipped = read.length - tracks.length;
+            if (tracks.length === 0) throw new Error("none of the tracks could be read (private or deleted?)");
             const found = [];
-            const queries = playlist.tracks.map((t) => searchQuery(parseTrack(t)));
+            const queries = tracks.map((t) => searchQuery(parseTrack(t)));
             for (const batch of chunk(queries, SEARCH_BATCH)) {
                 status.set(`searching beatport... ${found.length}/${queries.length}`);
                 found.push(...(await api.search(batch, abort.signal)));
             }
-            rows = buildRows(playlist.tracks, found);
+            rows = buildRows(tracks, found);
             if (!name.input.value) name.input.value = playlist.name;
             render();
         } catch (error) {

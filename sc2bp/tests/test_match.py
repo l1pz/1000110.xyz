@@ -96,6 +96,15 @@ def test_at_most_five_candidates_best_first():
     assert result.ranked[0].candidate["id"] == 0
 
 
+def test_a_real_track_with_a_catalogue_number_and_out_now_is_a_match():
+    """From the first real job: this was only a 'maybe' while the junk stayed in the title."""
+    parsed = parse_track("KNTRLVRLST - System Failure RCR010 OUT NOW! (Original Mix)", "KNTRLVRLST", 288.1)
+    right = {"id": 18285174, "title": "System Failure", "mix": "Original Mix", "artists": ["KNTRLVRLST"], "durationSec": 288}
+    wrong = {"id": 16722134, "title": "System Failure", "mix": "Original Mix", "artists": ["Ubbah"], "durationSec": 418}
+    result = match_track(parsed, [wrong, right])
+    assert result.verdict == "match" and result.ranked[0].candidate["id"] == 18285174
+
+
 def test_real_playlist_matches_what_the_browser_version_decided():
     """30 real SoundCloud tracks with their real Beatport results. The expected file was produced by the TypeScript
     version this code replaced, so it pins the port; after that it pins the tuning."""

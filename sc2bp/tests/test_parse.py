@@ -80,6 +80,23 @@ def test_drops_label_and_catalogue_tags_in_square_brackets():
     assert (parsed.title, parsed.mix) == ("LML", "DXPE Remix")
 
 
+def test_drops_out_now_and_a_catalogue_number_at_the_end_of_the_title():
+    parsed = track("KNTRLVRLST - System Failure RCR010 OUT NOW! (Original Mix)")
+    assert (parsed.artists, parsed.title, parsed.mix) == (["KNTRLVRLST"], "System Failure", "Original Mix")
+    assert track("Artist - Song OUT NOW").title == "Song"
+    assert track("Artist - Song - OUT NOW!").title == "Song"
+    assert track("Artist - Song | Out Now").title == "Song"
+    assert track("Artist - Song RCR010").title == "Song"
+
+
+def test_leaves_titles_alone_that_only_look_like_a_catalogue_number():
+    assert track("Artist - ABC123").title == "ABC123"
+    assert track("Artist - Studio 54").title == "Studio 54"
+    assert track("Artist - Route 66").title == "Route 66"
+    assert track("Artist - Song Part 2").title == "Song Part 2"
+    assert track("Artist - Now Out Of Time").title == "Now Out Of Time"
+
+
 def test_keeps_a_mix_in_square_brackets_and_a_non_mix_group_in_parentheses():
     assert track("A - B [Dixon Remix]").mix == "Dixon Remix"
     assert track("A - B (Part 2)").title == "B (Part 2)"

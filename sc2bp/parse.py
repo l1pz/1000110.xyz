@@ -20,6 +20,11 @@ JUNK_WORD = re.compile(
 # `Premiere | `, `PREMIERE : `, `FREE DOWNLOAD | ` in front of the artist
 LEADING_JUNK = re.compile(r"^\s*(?:premiere|exclusive|out now|free\s*(?:download|dl))\s*[:|\-–—]\s*", re.IGNORECASE)
 TRAILING_JUNK = re.compile(r"\s*[-|:]?\s*free\s*(?:download|dl)\s*$", re.IGNORECASE)
+# `Song OUT NOW!`, `Song - OUT NOW`
+OUT_NOW_TAIL = re.compile(r"[\s!|\-–—:]*\bout now\b[!\s]*$", re.IGNORECASE | re.ASCII)
+# a catalogue number at the end of the title (`System Failure RCR010`); it needs a word before it, so a title
+# that is only such a word (`ABC123`) is left alone
+CATALOG_TAIL = re.compile(r"\s+[A-Z]{2,6}\d{2,4}$")
 ARTIST_SEPARATOR = re.compile(
     r"\s*(?:,|&|×|\band\b|\bx\b|\bvs\.?|\bfeat\.?|\bft\.?|\bfeaturing|\bwith)\s*", re.IGNORECASE | re.ASCII
 )
@@ -85,7 +90,7 @@ def parse_track(title: str, uploader: str, duration_sec: float | None) -> Parsed
         return "" if JUNK_WORD.search(content) or match.group(0).startswith("[") else match.group(0)
 
     text = GROUP.sub(group, text)
-    text = re.sub(r"\s+", " ", TRAILING_JUNK.sub("", text, count=1)).strip()
+    text = re.sub(r"\s+", " ", OUT_NOW_TAIL.sub("", TRAILING_JUNK.sub("", text, count=1), count=1)).strip()
 
     guessed = False
     dash = DASH.match(text)
@@ -102,6 +107,8 @@ def parse_track(title: str, uploader: str, duration_sec: float | None) -> Parsed
     if tail and MIX_WORD.search(tail.group(2)) and not mix:
         name = tail.group(1)
         mix = tail.group(2).strip()
+
+    name = CATALOG_TAIL.sub("", name, count=1)
 
     inline = INLINE_FEAT.search(name)
     if inline:

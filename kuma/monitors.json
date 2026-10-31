@@ -1,0 +1,60 @@
+{
+  "interval": 60,
+  "retries": 2,
+  "monitors": [
+    {
+      "name": "website",
+      "url": "https://1000110.xyz/",
+      "group": "services"
+    },
+    {
+      "name": "tinyauth",
+      "was": "login",
+      "url": "https://auth.1000110.xyz/api/healthz",
+      "group": "services"
+    },
+    {
+      "name": "sc2bp",
+      "was": "converter",
+      "url": "http://sc2bp:8000/api/sc2bp/health",
+      "group": "services"
+    },
+    {
+      "name": "ruminant",
+      "url": "http://ruminant:8000/api/ruminant/health",
+      "group": "services"
+    },
+    {
+      "name": "pocket-id",
+      "url": "https://id.1000110.xyz/healthz",
+      "group": "services"
+    },
+    {
+      "name": "jarmisutode.hu",
+      "url": "https://jarmisutode.hu/",
+      "group": "sites"
+    },
+    {
+      "name": "jarmisutode.hu admin",
+      "url": "https://jarmisutode.hu/admin/health",
+      "group": "sites"
+    },
+    {
+      "name": "rsystem2005.hu",
+      "url": "https://rsystem2005.hu/",
+      "group": "sites"
+    },
+    {
+      "name": "minecraft",
+      "type": "game",
+      "game": "minecraft",
+      "host": "crafty_container",
+      "port": 25565,
+      "group": "games"
+    }
+  ],
+  "status_page": {
+    "slug": "main",
+    "title": "1000110.xyz status"
+  }
+}

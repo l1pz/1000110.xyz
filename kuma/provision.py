@@ -40,7 +40,8 @@ def ensure_notification(api: UptimeKumaApi, env: dict) -> None:
 
 
 def ensure_monitors(api: UptimeKumaApi, config: dict) -> dict:
-    ids = {m["name"]: m["id"] for m in api.get_monitors()}
+    current = {m["name"]: m for m in api.get_monitors()}
+    ids = {name: m["id"] for name, m in current.items()}
     for m in config["monitors"]:
         name = m["name"]
         if name not in ids and m.get("was") in ids:  # renamed in the config
@@ -49,7 +50,13 @@ def ensure_monitors(api: UptimeKumaApi, config: dict) -> dict:
             print(f"monitor {m['was']}: renamed to {name}")
             continue
         if name in ids:
-            print(f"monitor {name}: exists")
+            if m.get("url") and current.get(name, {}).get("url") != m["url"]:
+                # the URL changed in the config: update it, back to the defaults plus the overrides
+                defaults = {"maxredirects": 10, "accepted_statuscodes": ["200-299"]}
+                api.edit_monitor(ids[name], url=m["url"], **{**defaults, **m.get("extra", {})})
+                print(f"monitor {name}: updated")
+            else:
+                print(f"monitor {name}: exists")
             continue
         common = dict(
             name=name,

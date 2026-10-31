@@ -36,14 +36,8 @@
     },
     {
       "name": "jarmisutode.hu admin",
-      "url": "https://jarmisutode.hu/admin/",
-      "group": "sites",
-      "extra": {
-        "maxredirects": 0,
-        "accepted_statuscodes": [
-          "302"
-        ]
-      }
+      "url": "https://jarmisutode.hu/admin/health",
+      "group": "sites"
     },
     {
       "name": "rsystem2005.hu",

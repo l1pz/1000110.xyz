@@ -113,6 +113,23 @@ export class NetworkError extends Error {
 }
 
 /**
+ * tinyauth answers a browser (by its User-Agent) with a `302` to its login page instead, and a script cannot read where
+ * it points. So the address is built here: tinyauth lives on `auth.` next to the site. `null` away from a real site.
+ */
+export function browserLoginUrl(returnTo: string): string | null {
+    try {
+        const site = new URL(returnTo);
+        if (site.protocol !== "https:") return null;
+        const url = new URL(`https://auth.${site.hostname.replace(/^www\./, "")}/login`);
+        url.searchParams.set("login_for", "app");
+        url.searchParams.set("redirect_uri", returnTo);
+        return url.toString();
+    } catch {
+        return null;
+    }
+}
+
+/**
  * tinyauth answers an unauthenticated script call with `401` and its login address in `X-Tinyauth-Location`, whose
  * `redirect_uri` points at the API call. Points it back at `returnTo` (this tool) instead; `null` for anything odd.
  */
@@ -156,7 +173,9 @@ export function realApi({
     base = "/api/sc2bp",
 }: RealApiOptions): Api {
     async function call<T>(method: string, path: string, signal?: AbortSignal, body?: unknown): Promise<T> {
-        const init: RequestInit = { method, credentials: "same-origin", signal };
+        // "manual": a redirect to the login page is not followed (that page is on another origin, so the browser would
+        // block it and the tool would call it a lost connection); it is read as "not logged in" below
+        const init: RequestInit = { method, credentials: "same-origin", redirect: "manual", signal };
         if (body !== undefined) {
             init.headers = { "Content-Type": "application/json" };
             init.body = JSON.stringify(body);
@@ -168,6 +187,7 @@ export function realApi({
             if (signal?.aborted) throw error; // the caller left: not a network problem
             throw new NetworkError();
         }
+        if (res.type === "opaqueredirect") throw new AuthError(browserLoginUrl(returnTo));
         if (res.status === 401 || res.status === 403) {
             throw new AuthError(loginUrl(res.headers.get("X-Tinyauth-Location"), returnTo));
         }

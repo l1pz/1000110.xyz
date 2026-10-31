@@ -3,6 +3,7 @@ import {
     ApiError,
     AuthError,
     beatportUrl,
+    browserLoginUrl,
     type Candidate,
     type Job,
     loginUrl,
@@ -415,6 +416,30 @@ describe("the client", () => {
         const error = await api.me().catch((e: unknown) => e);
         expect(error).toBeInstanceOf(AuthError);
         expect((error as AuthError).loginUrl).toContain("redirect_uri=https%3A%2F%2F1000110.xyz%2Ftools%2F%23sc2bp");
+    });
+
+    it("turns the redirect a browser gets into an AuthError with a login address built from the site", async () => {
+        const calls: (RequestInit | undefined)[] = [];
+        const fetch = (async (_url: string, init?: RequestInit) => {
+            calls.push(init);
+            return { type: "opaqueredirect", status: 0, ok: false } as unknown as Response;
+        }) as unknown as typeof globalThis.fetch;
+        const error = await realApi({ returnTo, fetch })
+            .me()
+            .catch((e: unknown) => e);
+        expect(calls[0]?.redirect).toBe("manual");
+        expect(error).toBeInstanceOf(AuthError);
+        const url = new URL((error as AuthError).loginUrl ?? "");
+        expect(url.origin).toBe("https://auth.1000110.xyz");
+        expect(url.pathname).toBe("/login");
+        expect(url.searchParams.get("login_for")).toBe("app");
+        expect(url.searchParams.get("redirect_uri")).toBe(returnTo);
+    });
+
+    it("builds no login address away from an https site", () => {
+        expect(browserLoginUrl("http://localhost:5173/tools/#sc2bp")).toBeNull();
+        expect(browserLoginUrl("not a url")).toBeNull();
+        expect(browserLoginUrl("https://www.1000110.xyz/tools/")).toContain("https://auth.1000110.xyz/login");
     });
 
     it("keeps the server's explanation and status for other errors", async () => {

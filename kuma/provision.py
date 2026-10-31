@@ -42,19 +42,35 @@ def ensure_notification(api: UptimeKumaApi, env: dict) -> None:
 def ensure_monitors(api: UptimeKumaApi, config: dict) -> dict:
     ids = {m["name"]: m["id"] for m in api.get_monitors()}
     for m in config["monitors"]:
-        if m["name"] in ids:
-            print(f"monitor {m['name']}: exists")
+        name = m["name"]
+        if name not in ids and m.get("was") in ids:  # renamed in the config
+            api.edit_monitor(ids[m["was"]], name=name)
+            ids[name] = ids.pop(m["was"])
+            print(f"monitor {m['was']}: renamed to {name}")
             continue
-        res = api.add_monitor(
-            type=MonitorType.HTTP,
-            name=m["name"],
-            url=m["url"],
+        if name in ids:
+            print(f"monitor {name}: exists")
+            continue
+        common = dict(
+            name=name,
             interval=config["interval"],
             retryInterval=config["interval"],
             maxretries=config["retries"],
         )
-        ids[m["name"]] = res["monitorID"]
-        print(f"monitor {m['name']}: created")
+        if m.get("type") == "game":
+            # asks the game server itself; a TCP check would pass through Docker's port proxy even when the game is down
+            res = api.add_monitor(
+                type=MonitorType.GAMEDIG,
+                game=m["game"],
+                hostname=m["host"],
+                port=m["port"],
+                **common,
+            )
+        else:
+            # "extra" holds per-monitor overrides, e.g. accept a 302 instead of following it
+            res = api.add_monitor(type=MonitorType.HTTP, url=m["url"], **common, **m.get("extra", {}))
+        ids[name] = res["monitorID"]
+        print(f"monitor {name}: created")
     return ids
 
 
@@ -79,7 +95,7 @@ def ensure_status_page(api: UptimeKumaApi, config: dict, ids: dict) -> None:
 def main() -> int:
     env = dict(os.environ)
     config = json.loads((Path(__file__).parent / "monitors.json").read_text())
-    api = UptimeKumaApi(env.get("KUMA_URL", "http://uptime-kuma:3001"))
+    api = UptimeKumaApi(env.get("KUMA_URL", "http://uptime-kuma:3001"), timeout=60)
     try:
         api.login(env["KUMA_USER"], env["KUMA_PASS"])
         ensure_notification(api, env)

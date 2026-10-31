@@ -1,0 +1,10 @@
+{
+  "interval": 60,
+  "retries": 2,
+  "monitors": [
+    { "name": "website", "url": "https://1000110.xyz/", "group": "services" },
+    { "name": "login", "url": "https://auth.1000110.xyz/api/healthz", "group": "services" },
+    { "name": "converter", "url": "http://sc2bp:8000/api/sc2bp/health", "group": "services" }
+  ],
+  "status_page": { "slug": "main", "title": "1000110.xyz status" }
+}

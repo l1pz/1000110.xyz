@@ -32,7 +32,8 @@
     },
     "jarmisutode-hu": {
       "source": "stacks/jarmisutode-hu",
-      "target": "/opt/stacks/sites/jarmisutode-hu"
+      "target": "/opt/stacks/sites/jarmisutode-hu",
+      "auto": true
     },
     "rsystem2005-hu": {
       "source": "stacks/rsystem2005-hu",

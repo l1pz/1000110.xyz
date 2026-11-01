@@ -4,7 +4,9 @@
 #   sudo bash deploy/install-stack-deploy.sh --ci-pubkey 'ssh-ed25519 AAAA... ci-stack-deploy' \
 #        [--allow uptime-kuma=/opt/stacks/uptime-kuma ...]
 #
-# Safe to run again: it updates the script, rewrites the CI key and adds allowlist entries; it removes nothing.
+# --ci-pubkey is needed the first time only. Once /home/stackdeploy/.ssh/authorized_keys exists, leave it out and the
+# CI key stays as it is (adding a stack is then: sudo bash deploy/install-stack-deploy.sh --allow name=/opt/target).
+# Safe to run again: it updates the script, rewrites the CI key when one is given and adds allowlist entries; it removes nothing.
 # What it creates:
 #   user stackdeploy            no docker or sudo group; its only key is the CI key, forced to /usr/local/bin/stack-deploy-ssh
 #   /usr/local/bin/stack-deploy-ssh       the forced command: hands "[plan] <stack> <sha>" to the root script
@@ -29,7 +31,10 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ "$(id -u)" = 0 ] || { echo "run as root (sudo)" >&2; exit 1; }
-case "$CI_PUBKEY" in ssh-ed25519\ *) ;; *) echo "--ci-pubkey must be an ssh-ed25519 public key" >&2; exit 1 ;; esac
+KEYS=/home/stackdeploy/.ssh/authorized_keys
+if [ -n "$CI_PUBKEY" ] || [ ! -s "$KEYS" ]; then
+  case "$CI_PUBKEY" in ssh-ed25519\ *) ;; *) echo "--ci-pubkey must be an ssh-ed25519 public key (needed until $KEYS exists)" >&2; exit 1 ;; esac
+fi
 cd "$(dirname "$0")/.."
 [ -f stacks/stack_deploy.py ] || { echo "run from a checkout of the repo" >&2; exit 1; }
 
@@ -57,9 +62,11 @@ chmod 440 /etc/sudoers.d/stack-deploy
 visudo -cf /etc/sudoers.d/stack-deploy >/dev/null
 
 install -d -m 700 -o stackdeploy -g stackdeploy /home/stackdeploy/.ssh
-echo "restrict,command=\"/usr/local/bin/stack-deploy-ssh\" $CI_PUBKEY" > /home/stackdeploy/.ssh/authorized_keys
-chown stackdeploy:stackdeploy /home/stackdeploy/.ssh/authorized_keys
-chmod 600 /home/stackdeploy/.ssh/authorized_keys
+if [ -n "$CI_PUBKEY" ]; then
+  echo "restrict,command=\"/usr/local/bin/stack-deploy-ssh\" $CI_PUBKEY" > "$KEYS"
+fi
+chown stackdeploy:stackdeploy "$KEYS"
+chmod 600 "$KEYS"
 
 touch "$CONF/stacks"
 chmod 644 "$CONF/stacks"

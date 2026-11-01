@@ -190,6 +190,9 @@ def check_manifest(root: Path, manifest: dict) -> list[str]:
         if not compose.is_file():
             errors.append(f"{name}: {compose.relative_to(root) if src.exists() else entry.get('source')} not found")
             continue
+        for flag in ("auto", "approval"):
+            if flag in entry and not isinstance(entry[flag], bool):
+                errors.append(f"{name}: `{flag}` must be true or false")
         target = entry.get("target", "")
         if not re.fullmatch(r"/opt/[a-z0-9._/-]+", target) or ".." in target:
             errors.append(f"{name}: target {target!r} must be an absolute path under /opt")

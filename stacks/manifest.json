@@ -3,6 +3,7 @@
     "traefik": {
       "source": "stacks/traefik",
       "target": "/opt/stacks/traefik",
+      "auto": true,
       "approval": true
     },
     "tinyauth": {

@@ -67,6 +67,7 @@
     "ruminant": {
       "source": "ruminant",
       "target": "/opt/stacks/ruminant",
+      "auto": true,
       "include": [
         "compose.yaml",
         "Dockerfile",

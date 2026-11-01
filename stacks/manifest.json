@@ -8,6 +8,7 @@
     "tinyauth": {
       "source": "stacks/tinyauth",
       "target": "/opt/stacks/tinyauth",
+      "auto": true,
       "approval": true
     },
     "pocket-id": {

@@ -80,6 +80,7 @@ Decided 2026-10-31: use Uptime Kuma for monitoring and email alerts; our own `/s
 - Open: is `ruminant` monitored? Which small public SoundCloud URL for the canary? Next after this phase: YouTube playlist input for sc2bp (bot-check on the server IP decides whether it needs cookies).
 
 ## Phase 3d: Server hardening (netcup server, found by a read-only check on 2026-10-31)
+Superseded by Phase 3f (2026-11-01): do not pick tasks from this list; it stays as the record of the findings. Task 1 to 3 are now 3f Phase 2; 4, 5 and 7 are 3f Phase 3; 6 is 3f Phase 0.
 Needs the owner: the AI has no sudo password. Do the SSH step with a second session left open until the new login is confirmed, so a mistake cannot lock the owner out. Findings first, then one task each:
 - Good already: app containers run non-root, read-only and unprivileged; the Traefik dashboard is behind `tinyauth`; certificates come from the DNS challenge; only ports 22, 80, 443 and the Minecraft ports listen publicly.
 - [ ] 1 SSH: `PasswordAuthentication yes` and `PermitRootLogin yes` today. Switch to keys only (`PasswordAuthentication no`, `PermitRootLogin no`, in a drop-in under `/etc/ssh/sshd_config.d/`), check with `sshd -t`, reload, and confirm a new key login before closing the old session. Install `fail2ban` (sshd jail). Look at the failed-login count first (`journalctl -u ssh`, needs sudo) to know if SSH is being attacked.
@@ -114,6 +115,53 @@ Tasks (one branch and commit each; server steps need the owner):
   Progress (2026-11-01, branch `feat/stacks-rollout`): installer change done (`--ci-pubkey` optional once `authorized_keys` exists). Next, owner: `sudo bash deploy/install-stack-deploy.sh --allow 1000110-xyz=/opt/stacks/1000110-xyz` on the server; then I run `plan 1000110-xyz <sha>` and, if nothing is recreated, a PR flips `auto` for it. Done 2026-11-01 for `1000110-xyz`: allowlisted by the owner, server compose.yaml identical to the repo (no recreate), `auto` flipped (PR #41), first manual dispatch worked (plan: 0 files differ, container Running, deploy up and healthy). 2026-11-01: the owner allowlisted all remaining stacks in one command; read-only check: every compose file identical to the server, the repo only adds `.env.example` files, a README and sc2bp tests. Flipped and deployed by hand-dispatch with no recreate (PRs #41-#47): uptime-kuma, 1000110-xyz, rsystem2005-hu, jarmisutode-hu, sc2bp, ruminant, pocket-id, tinyauth (the last two after owner approval). All stacks now deploy from git (dockge was retired, task 6).
 - [x] 6 (2026-11-01, branch `feat/retire-dockge`; the owner decided dockge is not needed, all server work is done through the AI and git) Retire dockge: stack, manifest entry and lint exceptions removed from the repo, container taken down on the server, `/opt/dockge` (88 KB of data and the compose file) left in place because `/opt` needs root: the owner can `sudo rm -rf /opt/dockge`. Phase 3d task 4 is now only the Traefik socket proxy. Still open: delete `/opt/stacks/daemon.bak-2026-10-24` and the `.bak` files; the `dockge` line in `/etc/stack-deploy/stacks` is unused (owner may remove it). Delete `/opt/stacks/daemon.bak-2026-10-24` and the `.bak` files left on the server.
 - Lint exceptions known today (each goes in `policy.json` with a reason, and each is a Phase 3d item): traefik mounts `docker.sock` read-only; dockge mounts it read-write; Crafty publishes 25500-25600, 8123 and 19132/udp and runs as root with no `mem_limit` or `no-new-privileges`; Crafty `:latest` and nginx `:alpine` are floating tags (decide: pin, or allow-list `alpine`); pocket-id, tinyauth, Crafty, the sites lack `no-new-privileges`. Open: does the owner want to review exceptions by hand each time (default yes, they are in the diff)?
+
+## Phase 3f: Server refactor (plan approved by the owner 2026-11-01; decisions in DECISIONS.md)
+Why: the repo side is in good shape, but the server is one flat network with no backups, and it hosts two friends' real businesses. Priorities: friend sites first, Minecraft last. Short restarts at night are fine. Do the phases in order, one branch and commit per task. The owner wants to do as little by hand as possible.
+Found by a read-only check on 2026-11-01:
+- All 11 containers share the `proxy` network with inter-container traffic on (inferred from the config, not tested with a live connection), so `tinyauth` can be skipped from inside: Crafty or `jarmisutode-admin` could call `sc2bp:8000` or `uptime-kuma:3001` directly.
+- No backup tool or timer; Crafty's backups are on the same disk. `jarmisutode-hu/admin/` and the friends' `dist/` exist only on the server.
+- SSH allows passwords and root login; no `unattended-upgrades`, `fail2ban` or `ufw`. Crafty runs as root with 101 public ports and no memory limit (10 of 15 GiB used, no swap). The Traefik image is 11 months old. Docker logs have no rotation.
+- One friend has a Pocket ID account for `jarmisutode-admin`. `tinyauth` has no allowlist of its own, so whether that account can pass it is unverified.
+- `jarmisutode-admin` generates `dist/index.html` from `data/menu.json` at runtime. Crafty's `server.properties` uses only port 25565. The map at `map.1000110.xyz` is in real use (owner, 2026-11-01): BlueMap's web server on port 8100, reached through Traefik with no published port. The plugins folder listing did not show it, so that listing does not prove a plugin is unused; check how it is installed before closing 8123 or 19132/udp.
+
+Owner steps (only these): run one command with the sudo password to create the `claude` user; buy the Storage Box and keep the `restic` password in a password manager (without it the backups cannot be restored); create a free account for the external monitor; check in the netcup panel whether snapshots are on (a nice extra, not the backup).
+
+Phase 0, access and login check:
+- [ ] 1 Give Claude its own `claude` user with passwordless sudo (own SSH key; `mmate` stays the owner's), so logs show who did what and the access can be revoked alone. Update the auto-memory SSH note afterwards.
+- [ ] 2 Check that the friend's account cannot pass `tinyauth`, and fix it if it can: `tinyauth`'s Pocket ID client limited to the owner's group, `jarmisutode-admin`'s client to the friend's group, signup closed. Test with the real result, not only the settings.
+
+Phase 1, off-site backups (nothing later starts until the restore works):
+- [ ] 3 Nightly encrypted `restic` to a Hetzner Storage Box (confirm the price before the owner buys), with snapshots on the Storage Box side that the server cannot delete. Nightly: all `.env` files, `traefik/letsencrypt`, Pocket ID, `tinyauth`, Kuma, `sc2bp`, friends' sites and the jarmisutode `data/`. Weekly: the Minecraft world. Skip LLM models and Crafty's own backups. Kuma alerts when a backup does not run, with no new public route.
+- [ ] 4 Do a real restore into a temp folder and write a rebuild runbook for a new VPS.
+
+Phase 2, host hardening:
+- [ ] 5 SSH keys only, no root login, in a drop-in under `/etc/ssh/sshd_config.d/`; `sshd -t`, then test a new login before closing the old session (netcup console is the fallback).
+- [ ] 6 `unattended-upgrades` (security origin) with an automatic reboot around 04:00 when needed.
+- [ ] 7 Host firewall on. Docker bypasses it for published ports, so `lint.py` stays the real control for those.
+- [ ] 8 Docker log rotation and 4 GB of swap.
+
+Phase 3, isolation:
+- [ ] 9 Each stack gets its own network and only Traefik joins them all (set `traefik.docker.network` per stack); Kuma also joins `sc2bp` and `ruminant`, which it monitors internally. Check `jarmisutode-admin` reaches Pocket ID by its public URL. Roll out one stack at a time at night, friends' sites last, then delete `proxy`. Confirm by attempting connections that should fail.
+- [ ] 10 `lint.py` rejects shared networks, so new services are isolated by default (with tests).
+- [ ] 11 Read-only socket proxy in front of Traefik; drop the `docker.sock` exception from `policy.json`.
+- [ ] 12 Crafty: memory limit about 6 GB (adjust to real use), only port 25565 open (closes 8123 and 19132/udp, once checked as noted above), keep the public `map.1000110.xyz` route working (check it after the network change), try non-root and `no-new-privileges`, limit `insecureskipverify` to Crafty's backend. Trim `policy.json` to match.
+
+Phase 4, friend sites as a standard:
+- [ ] 13 Put `jarmisutode-admin` source and the `rsystem2005-hu` site in git, after a check for secrets (the repo is public). `.gitignore` has `dist/`, so `rsystem` needs a rule for it. `data/` and the admin's generated files stay out of git and in the backups: deploying them would overwrite the friend's prices. `data/secret_key` and `.env.admin` never go in.
+- [ ] 14 Security review of `jarmisutode-admin` (public login, image uploads), with tests and a CI job.
+- [ ] 15 Shared Traefik settings: security headers on all sites, rate limit on the admin login.
+- [ ] 16 External monitor for the two business sites, because Kuma goes down with the server.
+- [ ] 17 `_template` plus a short new-site checklist: own network, limits, `no-new-privileges`, monitor, backup, allowlist line.
+
+Phase 5, updates:
+- [ ] 18 Upgrade Traefik (read the release notes first).
+- [ ] 19 Pin all image tags and turn on Dependabot for compose files; Claude handles the PRs in batches. Remove the matching `policy.json` exceptions.
+
+Phase 6, cleanup:
+- [ ] 20 Remove `daemon.bak-2026-10-24`, `dist-old-*`, `*.bak` files, bench images, `dockge_default` and `/opt/dockge`.
+- [ ] 21 Move the friends' stacks in the repo to `stacks/sites/<name>` (manifest `source` only; server targets are already `/opt/stacks/sites/`). Code stacks stay at the root.
+- [ ] 22 Basic `ruminant` tests in CI.
 
 ## Phase 4: Gallery
 - [ ] Gallery card, dither/ASCII <-> raw photo view, albums
@@ -240,3 +288,7 @@ Needs a short plan shown in the terminal before any code. Storage is decided: op
 ### Session 22 (2026-10-31)
 - Done (branch `fix/sc2bp-login`): the sc2bp tool said "server unavailable" to anyone not logged in. tinyauth answers a browser with a `302` to `auth.<site>/login`, not the `401` + `X-Tinyauth-Location` the code expected; `fetch` followed it cross-origin, was blocked, and the error read as a lost connection. `api.ts` now uses `redirect: "manual"` and reads the opaque redirect as "not logged in", building the login address from the site (`browserLoginUrl`); the existing go-to-login-once logic in `index.ts` does the rest. Tests added; `npm run check` passes.
 - Not done: tried in a real browser after deploy (logged out, from a new PC), including that the return address with a `#` survives the login. If the login does not return to the tool, look at `redirect_uri` handling in tinyauth first.
+
+### Session 23 (2026-11-01)
+- Done (branch `docs/server-refactor-plan`, docs only, nothing changed on the server): server refactor planned with the owner and written down as Phase 3f, which replaces Phase 3d; decisions in DECISIONS.md.
+- Next: start Phase 3f, Phase 0 task 1, which needs the owner's sudo password. Not started on purpose: the owner continues on 2026-11-02.

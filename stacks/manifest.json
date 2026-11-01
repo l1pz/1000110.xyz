@@ -22,11 +22,6 @@
       "target": "/opt/stacks/crafty-controller",
       "approval": true
     },
-    "dockge": {
-      "source": "stacks/dockge",
-      "target": "/opt/dockge",
-      "approval": true
-    },
     "1000110-xyz": {
       "source": "stacks/1000110-xyz",
       "target": "/opt/stacks/1000110-xyz",

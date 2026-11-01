@@ -18,10 +18,6 @@
     { "stack": "crafty-controller", "rule": "no-new-privileges", "reason": "Crafty runs as root; check it still works with it (Phase 3d task 5)" },
     { "stack": "crafty-controller", "rule": "mem_limit", "reason": "Minecraft servers need a lot; size it with the owner" },
 
-    { "stack": "dockge", "rule": "mount", "value": "/var/run/docker.sock", "reason": "read-write socket is root on the host; dockge goes away once every stack is deployed from git (Phase 3e task 4)" },
-    { "stack": "dockge", "rule": "mount", "value": "/opt/stacks", "reason": "dockge edits the stacks in place" },
-    { "stack": "dockge", "rule": "no-new-privileges", "reason": "retiring soon" },
-    { "stack": "dockge", "rule": "mem_limit", "reason": "retiring soon" },
 
     { "stack": "*", "rule": "image", "value": "nginx:alpine", "reason": "floating tag on purpose so security fixes arrive on the next pull; decide whether to pin (Phase 3d)" },
     { "stack": "1000110-xyz", "rule": "no-new-privileges", "reason": "not set yet; try adding it" },

@@ -27,7 +27,8 @@
     },
     "1000110-xyz": {
       "source": "stacks/1000110-xyz",
-      "target": "/opt/stacks/1000110-xyz"
+      "target": "/opt/stacks/1000110-xyz",
+      "auto": true
     },
     "jarmisutode-hu": {
       "source": "stacks/jarmisutode-hu",

@@ -62,6 +62,15 @@ def monitor_kwargs(m: dict, config: dict) -> dict:
     return dict(type=MonitorType.HTTP, url=m["url"], **common, **m.get("extra", {}))
 
 
+def late_fields(m: dict) -> dict:
+    """Fields the client library cannot set when adding a monitor; they are applied with `edit_monitor` (which passes
+    any field through). Kuma 2 needs the comparison of a json-query monitor: without it every check fails with
+    "Invalid condition null"."""
+    if m.get("type") == "json-query":
+        return {"jsonPathOperator": m.get("operator", "==")}
+    return {}
+
+
 def ensure_monitors(api: UptimeKumaApi, config: dict) -> dict:
     current = {m["name"]: m for m in api.get_monitors()}
     ids = {name: m["id"] for name, m in current.items()}
@@ -73,16 +82,22 @@ def ensure_monitors(api: UptimeKumaApi, config: dict) -> dict:
             print(f"monitor {m['was']}: renamed to {name}")
             continue
         if name in ids:
+            changed = False
             if m.get("url") and current.get(name, {}).get("url") != m["url"]:
                 # the URL changed in the config: update it, back to the defaults plus the overrides
                 defaults = {"maxredirects": 10, "accepted_statuscodes": ["200-299"]}
                 api.edit_monitor(ids[name], url=m["url"], **{**defaults, **m.get("extra", {})})
-                print(f"monitor {name}: updated")
-            else:
-                print(f"monitor {name}: exists")
+                changed = True
+            late = {k: v for k, v in late_fields(m).items() if current.get(name, {}).get(k) != v}
+            if late:
+                api.edit_monitor(ids[name], **late)
+                changed = True
+            print(f"monitor {name}: {'updated' if changed else 'exists'}")
             continue
         res = api.add_monitor(**monitor_kwargs(m, config))
         ids[name] = res["monitorID"]
+        if late_fields(m):
+            api.edit_monitor(ids[name], **late_fields(m))
         print(f"monitor {name}: created")
     return ids
 

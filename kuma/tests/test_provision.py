@@ -135,3 +135,50 @@ def test_a_wrong_password_is_not_retried():
     with pytest.raises(ValueError):
         provision.connect(make, "http://kuma", "u", "bad")
     assert len(made) == 1
+
+
+class _Kuma:
+    """Just enough of the API for ensure_monitors."""
+
+    def __init__(self, existing=()):
+        self.monitors = [dict(m) for m in existing]
+        self.added, self.edited = [], []
+
+    def get_monitors(self):
+        return self.monitors
+
+    def add_monitor(self, **kwargs):
+        self.added.append(kwargs)
+        return {"monitorID": 100 + len(self.added)}
+
+    def edit_monitor(self, id_, **kwargs):
+        self.edited.append((id_, kwargs))
+
+
+JSON_MONITOR = {"name": "deploys", "type": "json-query", "url": "https://x/runs", "query": "a", "expected": "success", "group": "ci"}
+
+
+def test_json_query_monitors_get_a_comparison_operator():
+    # Kuma 2 fails every check with "Invalid condition null" without it; the client library cannot set it on add
+    assert provision.late_fields(JSON_MONITOR) == {"jsonPathOperator": "=="}
+    assert provision.late_fields({**JSON_MONITOR, "operator": "contains"}) == {"jsonPathOperator": "contains"}
+    assert provision.late_fields({"name": "w", "url": "https://x/", "group": "g"}) == {}
+
+
+def test_a_new_json_query_monitor_is_edited_right_after_it_is_added():
+    api = _Kuma()
+    provision.ensure_monitors(api, {**CONFIG, "monitors": [JSON_MONITOR]})
+    assert len(api.added) == 1 and "jsonPathOperator" not in api.added[0]
+    assert api.edited == [(101, {"jsonPathOperator": "=="})]
+
+
+def test_an_existing_json_query_monitor_without_the_operator_is_fixed():
+    api = _Kuma([{"id": 10, "name": "deploys", "url": "https://x/runs", "jsonPathOperator": None}])
+    provision.ensure_monitors(api, {**CONFIG, "monitors": [JSON_MONITOR]})
+    assert api.added == [] and api.edited == [(10, {"jsonPathOperator": "=="})]
+
+
+def test_an_existing_monitor_that_is_right_is_left_alone():
+    api = _Kuma([{"id": 10, "name": "deploys", "url": "https://x/runs", "jsonPathOperator": "=="}])
+    provision.ensure_monitors(api, {**CONFIG, "monitors": [JSON_MONITOR]})
+    assert api.added == [] and api.edited == []

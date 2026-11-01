@@ -36,7 +36,8 @@
     },
     "rsystem2005-hu": {
       "source": "stacks/rsystem2005-hu",
-      "target": "/opt/stacks/sites/rsystem2005-hu"
+      "target": "/opt/stacks/sites/rsystem2005-hu",
+      "auto": true
     },
     "uptime-kuma": {
       "source": "kuma",

@@ -76,3 +76,62 @@ def test_the_deploys_monitor_watches_github_actions_for_main():
     assert m["url"].startswith("https://api.github.com/repos/l1pz/1000110.xyz/actions/runs?")
     assert "branch=main" in m["url"] and "status=completed" in m["url"]
     assert m["expected"] == "success" and m["interval"] >= 300  # 12 requests an hour: under GitHub's 60 for anonymous use
+
+
+class _Timeout(Exception):
+    pass
+
+
+_Timeout.__name__ = "TimeoutError"  # socketio raises its own TimeoutError; the script matches it by name
+
+
+class _FakeApi:
+    def __init__(self, failures, error=_Timeout):
+        self.failures, self.error, self.logins, self.disconnects = failures, error, 0, 0
+
+    def login(self, user, password):
+        self.logins += 1
+        if self.logins <= self.failures:
+            raise self.error("no answer")
+
+    def disconnect(self):
+        self.disconnects += 1
+
+
+def _factory(failures, error=_Timeout):
+    made = []
+
+    def make(url, timeout):
+        made.append(_FakeApi(failures if not made else 0, error))
+        return made[-1]
+
+    return make, made
+
+
+def test_a_login_timeout_is_retried_with_a_fresh_connection():
+    make, made = _factory(failures=1)
+    api = provision.connect(make, "http://kuma", "u", "p")
+    assert len(made) == 2 and api is made[1] and made[0].disconnects == 1
+
+
+def test_a_login_that_always_times_out_gives_up_after_three_tries():
+    class Always(_FakeApi):
+        def login(self, user, password):
+            raise _Timeout("no answer")
+
+    made = []
+
+    def make(url, timeout):
+        made.append(Always(0))
+        return made[-1]
+
+    with pytest.raises(_Timeout):
+        provision.connect(make, "http://kuma", "u", "p")
+    assert len(made) == 3
+
+
+def test_a_wrong_password_is_not_retried():
+    make, made = _factory(failures=5, error=ValueError)
+    with pytest.raises(ValueError):
+        provision.connect(make, "http://kuma", "u", "bad")
+    assert len(made) == 1

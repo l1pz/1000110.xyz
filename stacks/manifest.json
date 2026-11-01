@@ -13,6 +13,7 @@
     "pocket-id": {
       "source": "stacks/pocket-id",
       "target": "/opt/stacks/pocket-id",
+      "auto": true,
       "approval": true
     },
     "crafty-controller": {

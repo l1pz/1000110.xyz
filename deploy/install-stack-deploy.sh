@@ -39,7 +39,9 @@ id stackdeploy >/dev/null 2>&1 || useradd --create-home --shell /bin/sh --commen
 
 install -d -m 755 -o root -g root "$CONF" /usr/local/libexec
 install -d -m 700 -o root -g root "$STATE"
-install -m 755 -o root -g root stacks/stack_deploy.py /usr/local/libexec/stack-deploy.py
+tr -d '\015' < stacks/stack_deploy.py > /usr/local/libexec/stack-deploy.py # strip CRs: a CRLF shebang cannot run
+chown root:root /usr/local/libexec/stack-deploy.py
+chmod 755 /usr/local/libexec/stack-deploy.py
 
 cat > /usr/local/bin/stack-deploy-ssh <<'WRAP'
 #!/bin/sh

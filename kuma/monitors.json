@@ -51,6 +51,16 @@
       "host": "crafty_container",
       "port": 25565,
       "group": "games"
+    },
+    {
+      "name": "deploys",
+      "type": "json-query",
+      "url": "https://api.github.com/repos/l1pz/1000110.xyz/actions/runs?branch=main&status=completed&per_page=5",
+      "query": "workflow_runs[conclusion != \"cancelled\"][0].conclusion",
+      "expected": "success",
+      "interval": 300,
+      "retries": 1,
+      "group": "ci"
     }
   ],
   "status_page": {

@@ -1,0 +1,39 @@
+services:
+  crafty:
+    container_name: crafty_container
+    image: registry.gitlab.com/crafty-controller/crafty-4:latest
+    restart: always
+    environment:
+      - TZ=Europe/Budapest
+    ports:
+      - 8123:8123 # Dynmap (Optional plugin)
+      - 19132:19132/udp # Bedrock default port
+      - 25500-25600:25500-25600 # Java Minecraft Server port range
+      - 127.0.0.1:8443:8443 # loopback-only: Claude's API access, bypasses the public gate
+    volumes:
+      - ./backups:/crafty/backups
+      - ./logs:/crafty/logs
+      - ./servers:/crafty/servers
+      - ./config:/crafty/app/config
+      - ./import:/crafty/import
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.crafty.rule=Host(`crafty.1000110.xyz`)"
+      - "traefik.http.routers.crafty.entrypoints=websecure"
+      - "traefik.http.routers.crafty.tls.certresolver=cloudflare"
+      - "traefik.http.routers.crafty.service=crafty"
+      - "traefik.http.services.crafty.loadbalancer.server.port=8443"
+      - "traefik.http.services.crafty.loadbalancer.server.scheme=https"
+      - "traefik.http.routers.crafty.middlewares=tinyauth"
+      # BlueMap web map (BlueMap's built-in webserver, port 8100)
+      - "traefik.http.routers.bluemap.rule=Host(`map.1000110.xyz`)"
+      - "traefik.http.routers.bluemap.entrypoints=websecure"
+      - "traefik.http.routers.bluemap.tls.certresolver=cloudflare"
+      - "traefik.http.routers.bluemap.service=bluemap"
+      - "traefik.http.services.bluemap.loadbalancer.server.port=8100"
+ 
+networks:
+  proxy:
+    external: true

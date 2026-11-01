@@ -39,6 +39,29 @@ def ensure_notification(api: UptimeKumaApi, env: dict) -> None:
     print("notification: created")
 
 
+def monitor_kwargs(m: dict, config: dict) -> dict:
+    """The `add_monitor` arguments for one entry of monitors.json (pure, so it can be tested without a Kuma)."""
+    common = dict(
+        name=m["name"],
+        interval=m.get("interval", config["interval"]),
+        retryInterval=m.get("interval", config["interval"]),
+        maxretries=m.get("retries", config["retries"]),
+    )
+    kind = m.get("type", "http")
+    if kind == "game":
+        # asks the game server itself; a TCP check would pass through Docker's port proxy even when the game is down
+        return dict(type=MonitorType.GAMEDIG, game=m["game"], hostname=m["host"], port=m["port"], **common)
+    if kind == "json-query":
+        # a JSONata query on the answer, compared with `expected` (Kuma 2)
+        return dict(
+            type=MonitorType.JSON_QUERY, url=m["url"], jsonPath=m["query"], expectedValue=m["expected"], **common, **m.get("extra", {})
+        )
+    if kind != "http":
+        raise ValueError(f"monitor {m['name']}: unknown type {kind!r}")
+    # "extra" holds per-monitor overrides, e.g. accept a 302 instead of following it
+    return dict(type=MonitorType.HTTP, url=m["url"], **common, **m.get("extra", {}))
+
+
 def ensure_monitors(api: UptimeKumaApi, config: dict) -> dict:
     current = {m["name"]: m for m in api.get_monitors()}
     ids = {name: m["id"] for name, m in current.items()}
@@ -58,24 +81,7 @@ def ensure_monitors(api: UptimeKumaApi, config: dict) -> dict:
             else:
                 print(f"monitor {name}: exists")
             continue
-        common = dict(
-            name=name,
-            interval=config["interval"],
-            retryInterval=config["interval"],
-            maxretries=config["retries"],
-        )
-        if m.get("type") == "game":
-            # asks the game server itself; a TCP check would pass through Docker's port proxy even when the game is down
-            res = api.add_monitor(
-                type=MonitorType.GAMEDIG,
-                game=m["game"],
-                hostname=m["host"],
-                port=m["port"],
-                **common,
-            )
-        else:
-            # "extra" holds per-monitor overrides, e.g. accept a 302 instead of following it
-            res = api.add_monitor(type=MonitorType.HTTP, url=m["url"], **common, **m.get("extra", {}))
+        res = api.add_monitor(**monitor_kwargs(m, config))
         ids[name] = res["monitorID"]
         print(f"monitor {name}: created")
     return ids

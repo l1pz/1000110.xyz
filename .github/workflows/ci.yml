@@ -47,6 +47,8 @@ jobs:
       - run: python stacks/lint.py
       - run: python -m pytest -q
         working-directory: stacks
+      - run: python -m pytest -q
+        working-directory: kuma
 
   deploy:
     needs: [check, sc2bp, stacks]

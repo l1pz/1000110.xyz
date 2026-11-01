@@ -405,3 +405,22 @@
 .tool .trk .dim {
     margin: 0 0 0.4em;
 }
+
+/* status tool: monitor rows and the banner (theme variables only) */
+.status-rows {
+    margin: 0 0 1em;
+    white-space: pre;
+    overflow-x: auto;
+}
+
+.st-up {
+    color: var(--green);
+}
+
+.st-warn {
+    color: var(--yellow);
+}
+
+.st-down {
+    color: var(--red);
+}

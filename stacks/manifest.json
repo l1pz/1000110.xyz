@@ -1,0 +1,27 @@
+{
+  "stacks": {
+    "traefik": { "source": "stacks/traefik", "target": "/opt/stacks/traefik" },
+    "tinyauth": { "source": "stacks/tinyauth", "target": "/opt/stacks/tinyauth" },
+    "pocket-id": { "source": "stacks/pocket-id", "target": "/opt/stacks/pocket-id" },
+    "crafty-controller": { "source": "stacks/crafty-controller", "target": "/opt/stacks/crafty-controller" },
+    "dockge": { "source": "stacks/dockge", "target": "/opt/dockge" },
+    "1000110-xyz": { "source": "stacks/1000110-xyz", "target": "/opt/stacks/1000110-xyz" },
+    "jarmisutode-hu": { "source": "stacks/jarmisutode-hu", "target": "/opt/stacks/sites/jarmisutode-hu" },
+    "rsystem2005-hu": { "source": "stacks/rsystem2005-hu", "target": "/opt/stacks/sites/rsystem2005-hu" },
+    "uptime-kuma": {
+      "source": "kuma",
+      "target": "/opt/stacks/uptime-kuma",
+      "include": ["compose.yaml", "monitors.json", "provision.py", "provision.sh", "README.md"]
+    },
+    "sc2bp": {
+      "source": "sc2bp",
+      "target": "/opt/stacks/sc2bp",
+      "include": ["compose.yaml", "Dockerfile", "requirements.txt", "README.md", "*.py"]
+    },
+    "ruminant": {
+      "source": "ruminant",
+      "target": "/opt/stacks/ruminant",
+      "include": ["compose.yaml", "Dockerfile", "requirements.txt", "README.md", "*.py"]
+    }
+  }
+}

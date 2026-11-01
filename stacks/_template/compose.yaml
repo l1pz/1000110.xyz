@@ -1,0 +1,27 @@
+# Copy this dir to sites/<name>, then replace SITE (container/router name) and DOMAIN.
+services:
+  web:
+    image: nginx:alpine
+    container_name: SITE
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/var/cache/nginx, /var/run, /tmp]
+    mem_limit: 64m
+    cpus: 0.5
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.SITE.rule=Host(`DOMAIN`) || Host(`www.DOMAIN`)
+      - traefik.http.routers.SITE.entrypoints=websecure
+      - traefik.http.routers.SITE.tls.certresolver=cloudflare
+      - traefik.http.routers.SITE.middlewares=SITE-www
+      - traefik.http.middlewares.SITE-www.redirectregex.regex=^https://www\.DOMAIN/(.*)
+      - traefik.http.middlewares.SITE-www.redirectregex.replacement=https://DOMAIN/$${1}
+      - traefik.http.middlewares.SITE-www.redirectregex.permanent=true
+      - traefik.http.services.SITE.loadbalancer.server.port=80
+networks:
+  proxy:
+    external: true

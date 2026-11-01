@@ -1,0 +1,31 @@
+services:
+  ruminant:
+    build: .
+    image: ruminant:local
+    container_name: ruminant
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 5g
+    # three dedicated cores: llama.cpp slows down 40x when one of its threads shares a core with something busy
+    cpuset: "5,6,7"
+    environment:
+      RUMINANT_MODEL: /models/gemma-4-E2B_q4_0-it.gguf
+      RUMINANT_THREADS: "3"
+      RUMINANT_MAX_LISTENERS: "50"
+      RUMINANT_STATE: /data/state.json
+    volumes:
+      - ./models:/models:ro
+      - ./data:/data
+    networks: [proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.ruminant.rule=Host(`1000110.xyz`) && PathPrefix(`/api/ruminant`)
+      - traefik.http.routers.ruminant.priority=100
+      - traefik.http.routers.ruminant.entrypoints=websecure
+      - traefik.http.routers.ruminant.tls.certresolver=cloudflare
+      - traefik.http.services.ruminant.loadbalancer.server.port=8000
+networks:
+  proxy:
+    external: true

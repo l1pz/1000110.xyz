@@ -1,0 +1,50 @@
+services:
+  web:
+    image: nginx:alpine
+    container_name: jarmisutode-hu
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/var/cache/nginx, /var/run, /tmp]
+    mem_limit: 64m
+    cpus: 0.5
+    volumes:
+      - ./dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.jarmisutode-hu.rule=Host(`jarmisutode.hu`) || Host(`www.jarmisutode.hu`)
+      - traefik.http.routers.jarmisutode-hu.entrypoints=websecure
+      - traefik.http.routers.jarmisutode-hu.tls.certresolver=cloudflare
+      - traefik.http.routers.jarmisutode-hu.middlewares=jarmisutode-hu-www
+      - traefik.http.middlewares.jarmisutode-hu-www.redirectregex.regex=^https://www\.jarmisutode.hu/(.*)
+      - traefik.http.middlewares.jarmisutode-hu-www.redirectregex.replacement=https://jarmisutode.hu/$${1}
+      - traefik.http.middlewares.jarmisutode-hu-www.redirectregex.permanent=true
+      - traefik.http.services.jarmisutode-hu.loadbalancer.server.port=80
+
+  # Étlap-admin (jarmisutode.hu/admin): menu.json-ből generálja a dist/index.html-t
+  admin:
+    build: ./admin
+    image: jarmisutode-admin:latest
+    container_name: jarmisutode-admin
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    mem_limit: 256m
+    cpus: 1
+    env_file: .env.admin
+    volumes:
+      - ./dist:/site
+      - ./data:/data
+    networks: [proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.jarmisutode-admin.rule=Host(`jarmisutode.hu`) && PathPrefix(`/admin`)
+      - traefik.http.routers.jarmisutode-admin.priority=100
+      - traefik.http.routers.jarmisutode-admin.entrypoints=websecure
+      - traefik.http.routers.jarmisutode-admin.tls.certresolver=cloudflare
+      - traefik.http.services.jarmisutode-admin.loadbalancer.server.port=8000
+
+networks:
+  proxy:
+    external: true

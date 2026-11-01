@@ -55,6 +55,7 @@
     "sc2bp": {
       "source": "sc2bp",
       "target": "/opt/stacks/sc2bp",
+      "auto": true,
       "include": [
         "compose.yaml",
         "Dockerfile",

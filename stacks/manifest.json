@@ -20,6 +20,7 @@
     "crafty-controller": {
       "source": "stacks/crafty-controller",
       "target": "/opt/stacks/crafty-controller",
+      "auto": true,
       "approval": true
     },
     "1000110-xyz": {

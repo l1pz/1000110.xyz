@@ -18,3 +18,6 @@ Not managed yet: `_template/` is a copy-me folder for a new static site, not a s
 
 ## Deploying
 `stack_deploy.py` runs on the server as root (installed by `deploy/install-stack-deploy.sh`) and is only reachable through the CI key's forced command: `<stack> <40 hex commit>` deploys, `plan <stack> <commit>` shows the file changes and what `docker compose` would recreate without changing anything. Logs: `/var/lib/stack-deploy/deploy.log`. A new stack must first be added to `/etc/stack-deploy/stacks` by the owner (`--allow name=/opt/target` on the installer). Break-glass is still your own `mmate` login; replaced files are in `<target>/.stack-deploy-prev/`.
+
+## CI
+A push to `main` deploys every stack with `"auto": true` in `manifest.json` whose copied files changed (`changed.py`); stacks with `"approval": true` wait for the owner in GitHub. To deploy or retry one stack by hand: Actions > CI > Run workflow (branch `main`), `stack` = its name. Turning a stack on: the owner adds it to `/etc/stack-deploy/stacks` (`--allow name=/opt/target`), then a PR sets `auto`.

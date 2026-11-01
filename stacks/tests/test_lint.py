@@ -187,3 +187,12 @@ def test_a_tracked_env_file_is_an_error(tmp_path, monkeypatch):
     monkeypatch.setattr(lint.subprocess, "run", lambda *a, **k: Done())
     bad = lint.tracked_secrets(tmp_path, OK_MANIFEST)
     assert [b.split(":")[0] for b in bad] == ["demo/.env", "demo/.env.admin"]
+
+
+@pytest.mark.parametrize("flag", ["auto", "approval"])
+def test_rollout_flags_must_be_booleans(tmp_path, flag):
+    manifest = {"stacks": {"demo": {"source": "demo", "target": "/opt/stacks/demo", flag: "yes"}}}
+    root = project(tmp_path, manifest)
+    assert any(f"`{flag}` must be true or false" in p for p in lint.check_manifest(root, manifest))
+    manifest["stacks"]["demo"][flag] = True
+    assert lint.check_manifest(root, manifest) == []

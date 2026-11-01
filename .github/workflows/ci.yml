@@ -3,6 +3,11 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      stack:
+        description: "Deploy this stack at this commit (a name from stacks/manifest.json; run it from main)"
+        required: true
 
 jobs:
   check:
@@ -66,3 +71,55 @@ jobs:
           echo "$DEPLOY_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
           echo "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           rsync -rltz --delete -e "ssh -i ~/.ssh/deploy_key" dist/ "deploy@${HOST}:."
+
+  # Which stacks does this push deploy? stacks/changed.py decides (tested): `auto` stacks with a copied file changed,
+  # or the stack named in a manual run. Pull requests never get here, so the secrets never reach them.
+  stacks-changed:
+    needs: [check, sc2bp, stacks]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+      any: ${{ steps.pick.outputs.any }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          STACK: ${{ inputs.stack }}
+        run: python3 stacks/changed.py --before "$BEFORE" --sha "$SHA" --stack "$STACK" | tee -a "$GITHUB_OUTPUT"
+
+  # One stack at a time, stopping at the first failure. Stacks marked `approval` use the `production-approval`
+  # Environment, which waits for the owner. The server (stack-deploy) does the real checks; see DECISIONS.md.
+  deploy-stacks:
+    needs: stacks-changed
+    if: needs.stacks-changed.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      fail-fast: true
+      matrix: ${{ fromJSON(needs.stacks-changed.outputs.matrix) }}
+    environment: ${{ matrix.approval && 'production-approval' || 'production' }}
+    concurrency:
+      group: deploy-stack-${{ matrix.stack }}
+      cancel-in-progress: false
+    steps:
+      - name: plan, then deploy ${{ matrix.stack }}
+        env:
+          KEY: ${{ secrets.STACKDEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          STACK: ${{ matrix.stack }}
+          SHA: ${{ github.sha }}
+        run: |
+          install -m 700 -d ~/.ssh
+          (umask 077; echo "$KEY" > ~/.ssh/stack_key)
+          echo "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh_stack() { ssh -i ~/.ssh/stack_key -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes "stackdeploy@${HOST}" "$1"; }
+          echo "::group::plan $STACK"
+          ssh_stack "plan $STACK $SHA"
+          echo "::endgroup::"
+          ssh_stack "$STACK $SHA"

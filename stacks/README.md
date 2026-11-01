@@ -15,3 +15,6 @@ devices, capabilities, host mounts) fails unless `policy.json` lists it with a r
 nothing fails too, so fixing a risk means deleting its line.
 
 Not managed yet: `_template/` is a copy-me folder for a new static site, not a stack.
+
+## Deploying
+`stack_deploy.py` runs on the server as root (installed by `deploy/install-stack-deploy.sh`) and is only reachable through the CI key's forced command: `<stack> <40 hex commit>` deploys, `plan <stack> <commit>` shows the file changes and what `docker compose` would recreate without changing anything. Logs: `/var/lib/stack-deploy/deploy.log`. A new stack must first be added to `/etc/stack-deploy/stacks` by the owner (`--allow name=/opt/target` on the installer). Break-glass is still your own `mmate` login; replaced files are in `<target>/.stack-deploy-prev/`.

@@ -18,11 +18,12 @@ services:
       - traefik.http.routers.kuma-admin.tls.certresolver=cloudflare
       - traefik.http.routers.kuma-admin.middlewares=tinyauth
       - traefik.http.routers.kuma-admin.service=kuma
-      # Public JSON for the /status/ page: GET only, no auth, nothing else of Kuma is reachable here.
+      # Status JSON for the tools/status page: GET only, behind tinyauth (owner only), nothing else of Kuma is reachable here.
       - traefik.http.routers.kuma-status.rule=Host(`1000110.xyz`) && PathPrefix(`/api/status-page`) && Method(`GET`)
       - traefik.http.routers.kuma-status.priority=100
       - traefik.http.routers.kuma-status.entrypoints=websecure
       - traefik.http.routers.kuma-status.tls.certresolver=cloudflare
+      - traefik.http.routers.kuma-status.middlewares=tinyauth
       - traefik.http.routers.kuma-status.service=kuma
       - traefik.http.services.kuma.loadbalancer.server.port=3001
 networks:

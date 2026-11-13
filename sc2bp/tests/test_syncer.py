@@ -668,3 +668,28 @@ def test_a_song_unliked_before_it_was_filed_is_left_alone(tmp_path):
     w.run()
     assert 2001 not in w.contents().get("Liked - Techno #1", [])
     assert w.video(1)["liked"] is False and w.video(1)["filed"] is False
+
+
+def test_a_run_reports_how_far_it_is_inside_the_current_phase(world):
+    run, _ = world.syncer.start_run()
+    searching, filing = [], []
+    view = lambda: world.syncer.get_run(run["id"])  # noqa: E731
+    world.bp.search_hook = lambda n: searching.append((view()["phase"], view()["progress"]))
+    world.bp.add_hook = lambda n: filing.append((view()["phase"], view()["progress"]))
+    world.syncer.process_next()
+    world.syncer.confirm_run(run["id"])
+    world.syncer.process_next()
+    assert searching[0] == ("match", {"done": 0, "total": 7}) and searching[-1][1] == {"done": 6, "total": 7}
+    assert filing[0] == ("file", {"done": 0, "total": 5})
+    assert [p["done"] for _, p in filing] == sorted(p["done"] for _, p in filing)  # it only moves forward
+    assert view()["state"] == "done" and view()["progress"] is None  # finished: nothing left to count
+
+
+def test_genres_no_group_lists_are_reported_so_they_can_be_moved(tmp_path):
+    w = World(tmp_path, [("match", "Artist0 - Song0", "Polka"), ("match", "Artist1 - Song1", "Polka"), ("match", "Artist2 - Song2", TECHNO)])
+    w.run()
+    assert w.syncer.status()["otherGenres"] == {"Polka": 2}
+    groups = w.syncer.config()["groups"]
+    groups[0]["genres"].append("Polka")
+    w.syncer.update_config({"groups": groups})
+    assert w.syncer.status()["otherGenres"] == {}

@@ -1,11 +1,9 @@
-import type { Candidate, Filter, Job, Phase, State } from "./api";
+import { ago, candidateText, duration, EPSILON, formatTime, progressBar, type Tone } from "../../backend";
+import type { Filter, Job, Phase, State } from "./api";
+
+export { ago, candidateText, duration, formatTime, progressBar, type Tone };
 
 /** Pure decisions behind the screens: what a job row says, which buttons a job gets, how often to ask the server. */
-
-export type Tone = "run" | "ok" | "bad" | "warn" | "idle";
-
-/** Rounding down must not show 59% for 0.6 because of floating-point noise (0.03 + 0.27 + 0.3 is 0.6000000000000001). */
-const EPSILON = 1e-9;
 
 export const isActive = (state: State): boolean => state === "queued" || state === "running";
 
@@ -27,12 +25,6 @@ export function overall(job: Job): number {
     const weight = WEIGHTS[job.progress.phase as keyof typeof WEIGHTS] ?? 0;
     if (total > 0) sum += weight * Math.min(1, done / total);
     return Math.min(1, sum);
-}
-
-/** `[█████░░░░░]`: filled by `ratio`; the blocks and shades are in the font. */
-export function progressBar(ratio: number, width = 20): string {
-    const filled = Math.max(0, Math.min(width, Math.floor(ratio * width + EPSILON)));
-    return `[${"█".repeat(filled)}${"░".repeat(width - filled)}]`;
 }
 
 export function barText(job: Job): string {
@@ -71,18 +63,6 @@ export function stateMark(state: State): { text: string; tone: Tone } {
             return { text: "[ok]", tone: "ok" };
     }
 }
-
-/** `45s`, `3m`, `1h 05m`. */
-export function duration(seconds: number): string {
-    const s = Math.max(0, Math.round(seconds));
-    if (s < 60) return `${s}s`;
-    const m = Math.floor(s / 60);
-    if (m < 60) return `${m}m`;
-    return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
-}
-
-export const ago = (then: number, now: number): string =>
-    now - then < 10 ? "just now" : `${duration(now - then)} ago`;
 
 /** The playlist link without the scheme, for a job that has no name yet. */
 export function fallbackName(url: string): string {
@@ -238,18 +218,6 @@ export function resultModel(job: Job): ResultModel {
         .filter(([n]) => (n as number) > 0)
         .map(([n, text]) => `${text}: ${n}`);
     return { headline, lines };
-}
-
-export const formatTime = (seconds: number | null): string => {
-    if (seconds === null) return "?";
-    const s = Math.round(seconds);
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-};
-
-/** `Title (Mix) · Artist, Artist · 6:05` for a suggestion button. */
-export function candidateText(c: Candidate): string {
-    const mix = c.mix ? ` (${c.mix})` : "";
-    return `${c.title.trim()}${mix} · ${c.artists.join(", ")} · ${formatTime(c.durationSec)}`;
 }
 
 export interface ReviewTab {

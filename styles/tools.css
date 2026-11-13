@@ -424,3 +424,52 @@
 .st-down {
     color: var(--red);
 }
+
+/* liked music sync (tools/sync) */
+.tool .syncnav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5ch 2ch;
+    margin-top: 1.5em;
+}
+.tool .syncnav {
+    align-items: center;
+}
+.tool .syncnav .current,
+.tool .syncnav a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+}
+.tool .syncnav .current {
+    color: var(--yellow);
+}
+.tool .syncgroup {
+    margin: 0.8em 0;
+}
+.tool .syncgroup .grouphead {
+    color: var(--yellow);
+}
+.tool .syncgroup .playlists a {
+    margin-right: 0.3ch;
+}
+.tool .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5ch;
+    margin: 0.4em 0;
+}
+.tool .chip {
+    padding: 0 1ch;
+}
+.tool .syncrun .result {
+    margin-top: 0.8em;
+}
+.tool .histrow {
+    margin: 0.3em 0;
+}
+.tool .trk .rowlinks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 2ch;
+}

@@ -35,7 +35,7 @@ A job is saved to `/data/jobs/<id>.json` (written to a temp file and renamed) af
 - `POST /jobs/{id}/tracks/{index}/search {query}` searches Beatport by hand and offers the results
 
 ## Liked-music sync (`syncer.py`, `sync_routes.py`, routes under `/api/sc2bp/sync`)
-Keeps a YouTube playlist (default: Liked music, `list=LM`) filed into Beatport playlists grouped by genre, nightly and on a button. The tool for it is `/tools/#sync` (a later PR); everything below already works over the API.
+Keeps a YouTube playlist (default: Liked music, `list=LM`) filed into Beatport playlists grouped by genre, nightly and on a button. The tool for it is `/tools/#sync` (home, inbox, groups, settings, history); everything below also works over the API.
 
 **Rules.** It only adds: nothing is removed from Beatport, an unliked song stays, a track the owner deletes from a playlist is remembered as `dismissed` and never added back. What is filed is decided by reading the Beatport playlists, never by the add call's answer: after adding, the playlist is read again, present means `filed`, absent means `unavailable` (tried again after 30 days, at most 3 times). Every phase can run twice with the same result, so a crash or a restart just carries on.
 

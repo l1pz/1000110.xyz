@@ -89,7 +89,8 @@ Keep YouTube Music "Liked music" synced to Beatport playlists grouped by genre (
   Handoff (2026-11-13, branch `feat/sync-foundations`): pytest 221 green. Found that Beatport's add answer and availability flags are unreliable (see README), so the sync must verify by re-reading playlists.
 - [x] 2 Engine, API, scheduler, health: `syncer.py`, `/api/sc2bp/sync/*`, state in `/data/sync/`, import of the finished conversion job `6aad4181`, Kuma monitor `sync`.
   Handoff (2026-11-13, branch `feat/sync-engine`): pytest 304 green, kuma tests green. After the deploy: `provision.sh` on the server to add the `sync` monitor; then import job `6aad4181`, `POST /run`, check the preview, confirm. The UI is task 3. One deploy lesson: the Dockerfile copies `*.py` now (see PR #59), so new modules ship by themselves.
-- [ ] 3 Tool UI `tools/sync` (home, inbox, groups, settings, history), shared review pieces moved to `src/features/tools/beatport-review.ts`.
+- [x] 3 Tool UI `tools/sync` (home, inbox, groups, settings, history); the shared pieces went to `src/features/tools/backend.ts` and `backend-dom.ts` instead of `beatport-review.ts` (the inbox rows are the sync's own).
+  Handoff (2026-11-13, branch `feat/sync-ui`): `npm run check` 445 tests, pytest green; looked at in headless Chromium at 360 and 390 px against the fake API (all screens and the main clicks, no console errors, no horizontal scroll). The run now reports `progress`, the status lists `otherGenres`. Open: `sc2bp/index.ts` still has its own copy of the login guard that `loginGuard` now holds; switch it over once the tool has been seen in a real browser with the real server.
 
 ## Phase 3d: Server hardening (netcup server, found by a read-only check on 2026-10-31)
 Superseded by Phase 3f (2026-11-01): do not pick tasks from this list; it stays as the record of the findings. Task 1 to 3 are now 3f Phase 2; 4, 5 and 7 are 3f Phase 3; 6 is 3f Phase 0.

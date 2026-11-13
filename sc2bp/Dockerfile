@@ -4,7 +4,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py beatport.py errors.py jobs.py match.py parse.py soundcloud.py sources.py youtube.py ./
+# every module next to the Dockerfile: an explicit list forgot a new one once and the container crash-looped
+COPY *.py ./
 RUN useradd --no-create-home --uid 10002 appuser
 USER appuser
 # the container is read-only except /tmp and /data: yt-dlp wants a writable home

@@ -29,6 +29,19 @@ ARTIST_SEPARATOR = re.compile(
     r"\s*(?:,|&|×|\band\b|\bx\b|\bvs\.?|\bfeat\.?|\bft\.?|\bfeaturing|\bwith)\s*", re.IGNORECASE | re.ASCII
 )
 INLINE_FEAT = re.compile(r" (?:feat\.?|ft\.?|featuring) (.+)$", re.IGNORECASE)
+# YouTube titles are music-video titles: `Artist - Song (Official Music Video)`, `(Video Oficial)`, `( Video Lyric )`
+VIDEO_JUNK_GROUP = re.compile(r"[(\[]\s*([^()\[\]]*?)\s*[)\]]")
+VIDEO_WORD = re.compile(
+    r"\b(?:official|oficial|video|v[ií]deo|audio|lyrics?|lyrical|visuali[sz]er|visuali[sz]ador|hd|4k|clip|"
+    r"performance|live session|music video)\b",
+    re.IGNORECASE,
+)
+VIDEO_TAIL = re.compile(
+    r"\s*[-–—:]?\s*\b(?:official\s+)?(?:music\s+|lyric\s+|audio\s+)?(?:video|visuali[sz]er|audio|lyrics?)\s*$",
+    re.IGNORECASE | re.ASCII,
+)
+WITH_GROUP = re.compile(r"[(\[]\s*with\s+([^()\[\]]+?)\s*[)\]]", re.IGNORECASE)
+CREDIT_PIPE = re.compile(r"\s+\|\s+")
 EDGE_PUNCTUATION = re.compile(r"^[\s\-–—|:]+|[\s\-–—|:]+$")
 
 # Letters that do not decompose into a base letter plus an accent, so NFKD leaves them alone
@@ -67,13 +80,40 @@ def split_artists(text: str) -> list[str]:
     return [name for name in (n.strip() for n in ARTIST_SEPARATOR.split(text)) if name]
 
 
-def parse_track(title: str, uploader: str, duration_sec: float | None) -> Parsed:
+def clean_youtube_title(title: str) -> str:
+    """Takes the music-video dressing off a YouTube title: groups naming the video kind (`(Official Video)`,
+    `(Video Oficial)`, `[Lyric Video]`), everything after a ` | ` (credits, `Official Visualiser`), a bare trailing
+    `OFFICIAL MUSIC VIDEO`, and turns `(with X)` into `(feat. X)`. A group that names a mix is kept. Never returns
+    an empty title: if everything would go, the original stays."""
+    text = re.sub(r"\s+", " ", title).strip()
+    cleaned = CREDIT_PIPE.split(text, maxsplit=1)[0]
+    cleaned = WITH_GROUP.sub(lambda m: f"(feat. {m.group(1)})", cleaned)
+
+    def group(match: re.Match) -> str:
+        content = match.group(1)
+        if VIDEO_WORD.search(content) and not MIX_WORD.search(content):
+            return ""
+        return match.group(0)
+
+    cleaned = VIDEO_JUNK_GROUP.sub(group, cleaned)
+    cleaned = VIDEO_TAIL.sub("", cleaned, count=1)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned or text
+
+
+def parse_track(
+    title: str,
+    uploader: str,
+    duration_sec: float | None,
+    source: str = "soundcloud",
+    uploader_is_artist: bool = False,
+) -> Parsed:
     """Junk groups (`[FREE DL]`, `(Premiere)`) and any other square-bracket tag (a label or catalogue number:
     `[Revised Record]`, `[TTC002]`) are dropped, `(feat. X)` joins the artists, and the last group that names a mix
     (`(Foo Remix)`) becomes `mix`. A leading `Premiere |` is dropped too."""
     featured: list[str] = []
     mix = ""
-    text = re.sub(r"\s+", " ", title).strip()
+    text = re.sub(r"\s+", " ", clean_youtube_title(title) if source == "youtube" else title).strip()
     while LEADING_JUNK.search(text):
         text = LEADING_JUNK.sub("", text, count=1)
 
@@ -100,7 +140,7 @@ def parse_track(title: str, uploader: str, duration_sec: float | None) -> Parsed
     else:
         artists = split_artists(uploader)
         name = text
-        guessed = True
+        guessed = not uploader_is_artist
 
     # "Artist - Title - Foo Remix": the mix trails after a second dash
     tail = DASH.match(name)

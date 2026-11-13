@@ -11,6 +11,8 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 
+from errors import BadUrl, PlaylistError
+
 log = logging.getLogger("sc2bp.soundcloud")
 
 HOSTS = {"soundcloud.com", "www.soundcloud.com", "m.soundcloud.com", "on.soundcloud.com"}
@@ -20,18 +22,6 @@ API_TRACK = re.compile(r"/tracks/\d+")
 LIST_TIMEOUT_SECS = 120
 MAX_TRACKS = 1000
 WORKERS = 6
-
-
-class PlaylistError(Exception):
-    """The playlist could not be read. `retryable`: trying again later may work (a timeout)."""
-
-    def __init__(self, message: str, retryable: bool = False):
-        super().__init__(message)
-        self.retryable = retryable
-
-
-class BadUrl(PlaylistError):
-    """The address is not a SoundCloud link."""
 
 
 def check_url(url: str) -> str:

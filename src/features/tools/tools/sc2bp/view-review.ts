@@ -1,5 +1,5 @@
 import { button, buttonRow, statusLine } from "../../ui";
-import { ApiError, type Filter, type Job, soundcloudUrl, type Track } from "./api";
+import { ApiError, type Filter, type Job, sourcePage, type Track } from "./api";
 import { type Ctx, describe, external, h, jobLink, link, tone } from "./dom";
 import { candidateText, fallbackName, formatTime, reviewTabs } from "./jobs";
 
@@ -127,8 +127,8 @@ export function reviewView(ctx: Ctx, id: string): void {
 
             if (t.state === "unreadable") {
                 const p = h("p", "dim", "could not be read (private or deleted?) ");
-                const url = soundcloudUrl(t.url);
-                if (url) p.append(external("open on soundcloud", url));
+                const page = sourcePage(t.url);
+                if (page) p.append(external(`open on ${page.site}`, page.url));
                 parts.push(p);
                 box.replaceChildren(...parts, note.node);
                 return;

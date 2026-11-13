@@ -110,3 +110,51 @@ def test_odd_titles_do_not_crash(text):
 def test_label_shows_artists_title_and_mix():
     assert label(track("A - B (C Remix)")) == "A - B (C Remix)"
     assert label(track("", "")) == ""
+
+
+def yt(title, uploader="Up", topic=False):
+    from parse import parse_track
+
+    return parse_track(title, uploader, 200, source="youtube", uploader_is_artist=topic)
+
+
+@pytest.mark.parametrize(
+    ("title", "artists", "name"),
+    [
+        ("Shakira, Burna Boy - Dai Dai (Official Video)", ["Shakira", "Burna Boy"], "Dai Dai"),
+        ("Arcángel - FN8 ( Video Lyric )", ["Arcángel"], "FN8"),
+        ("Real Boston Richey - The Type (Official Music Video) ft. YTB Fatt", ["Real Boston Richey", "YTB Fatt"], "The Type"),
+        ("Becky G - POR EL CONTRARIO (Performance Video) ft. Ángela Aguilar", ["Becky G", "Ángela Aguilar"], "POR EL CONTRARIO"),
+        ("KAROL G, Judeline - BbY WOW (Visualizer)", ["KAROL G", "Judeline"], "BbY WOW"),
+        ("Artist - Song [Lyric Video]", ["Artist"], "Song"),
+        ("Artist - Song OFFICIAL MUSIC VIDEO", ["Artist"], "Song"),
+    ],
+)
+def test_youtube_titles_lose_their_video_dressing(title, artists, name):
+    parsed = yt(title)
+    assert (parsed.artists, parsed.title) == (artists, name)
+
+
+def test_youtube_credits_after_a_pipe_are_dropped_and_with_becomes_featuring():
+    parsed = yt("KALYANI (with Shreya Ghoshal) OFFICIAL MUSIC VIDEO | ARJN | KDS | FIFTY4", "Money Verse")
+    assert (parsed.artists, parsed.title) == (["Money Verse", "Shreya Ghoshal"], "KALYANI")
+    assert yt("Alfaaz | Hamza Malik x Zain Zohaib | Official Visualiser", "Hamza Malik").title == "Alfaaz"
+
+
+def test_youtube_keeps_a_mix_even_when_it_says_video():
+    parsed = yt("Artist - Song (Extended Video Mix)")
+    assert parsed.mix == "Extended Video Mix"
+
+
+def test_youtube_never_cleans_a_title_to_nothing():
+    assert yt("(Official Video)").title == "(Official Video)"
+
+
+def test_a_topic_channel_is_the_artist_not_a_guess():
+    parsed = yt("Strobe", "deadmau5", topic=True)
+    assert (parsed.artists, parsed.artist_guessed) == (["deadmau5"], False)
+    assert yt("Strobe", "deadmau5").artist_guessed is True
+
+
+def test_soundcloud_titles_are_not_given_the_youtube_cleanup():
+    assert track("Solomun - Higher State (Official Video)").title == "Higher State (Official Video)"

@@ -1,15 +1,15 @@
 import app as service
 import pytest
 from beatport import BeatportError
-from fakes import PLAYLIST, Clock, FakeBeatport, FakeSoundCloud, transient
+from fakes import PLAYLIST, YOUTUBE_PLAYLIST, Clock, FakeBeatport, FakeSoundCloud, FakeYouTube, transient
 from fastapi.testclient import TestClient
 from jobs import Runner
 
 
 @pytest.fixture
 def world(tmp_path):
-    sc, bp, clock = FakeSoundCloud(), FakeBeatport(), Clock()
-    runner = Runner(tmp_path, sc, lambda: bp, sleep=clock.sleep, clock=clock)
+    sc, yt, bp, clock = FakeSoundCloud(), FakeYouTube(), FakeBeatport(), Clock()
+    runner = Runner(tmp_path, {"soundcloud": sc, "youtube": yt}, lambda: bp, sleep=clock.sleep, clock=clock)
     service.app.state.runner = runner  # the lifespan (and its worker thread) is not started in tests
 
     class World:
@@ -45,7 +45,19 @@ def test_starting_a_job_returns_it_and_a_second_start_returns_the_same_one(world
 
 def test_a_link_that_is_not_soundcloud_gets_a_400_with_the_reason(world):
     r = world.client.post("/api/sc2bp/jobs", json={"url": "https://evil.example/x"})
-    assert (r.status_code, r.json()["detail"]) == (400, "only https://soundcloud.com links work")
+    assert (r.status_code, r.json()["detail"]) == (400, "only soundcloud or youtube playlist links work")
+
+
+def test_a_youtube_music_link_is_accepted_and_stored_in_its_canonical_form(world):
+    r = world.client.post("/api/sc2bp/jobs", json={"url": "https://music.youtube.com/playlist?list=PLabc123&si=x"})
+    assert r.status_code == 200
+    job = r.json()["job"]
+    assert (job["source"], job["url"]) == ("youtube", "https://www.youtube.com/playlist?list=PLabc123")
+
+
+def test_a_youtube_video_link_gets_a_400_with_the_reason(world):
+    r = world.client.post("/api/sc2bp/jobs", json={"url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"})
+    assert r.status_code == 400 and "list=" in r.json()["detail"]
 
 
 def test_the_job_list_and_one_job_show_progress_and_the_result(world):
@@ -145,7 +157,7 @@ def test_the_real_app_starts_its_worker_and_finishes_a_job_with_nobody_watching(
 
     sc, bp = FakeSoundCloud(), FakeBeatport()
     monkeypatch.setattr(service, "DATA_DIR", tmp_path)
-    monkeypatch.setattr(service, "soundcloud", sc)
+    monkeypatch.setattr(service, "SOURCES", {"soundcloud": sc, "youtube": FakeYouTube()})
     monkeypatch.setattr(service, "beatport_client", lambda: bp)
     with TestClient(service.app) as client:  # runs the lifespan: the runner and its worker thread
         job_id = client.post("/api/sc2bp/jobs", json={"url": PLAYLIST}).json()["job"]["id"]

@@ -1,9 +1,9 @@
-"""Conversion jobs: list a SoundCloud playlist, read its tracks, match them on Beatport, create the playlist.
+"""Conversion jobs: list a SoundCloud or YouTube playlist, read its tracks, match them on Beatport, create the playlist.
 
 A job runs on the server with the page closed, one at a time, and is saved as a JSON file after every batch. Every
 phase only does what is still undone, so a restart, a pause or a retry simply carries on. Failures are sorted:
 
-- a private or deleted SoundCloud track is `unreadable` and never fails the job;
+- a private or deleted track is `unreadable` and never fails the job;
 - a Beatport search that keeps failing marks that one track `error` and the job goes on (three in a row pause it);
 - anything that needs the owner (login refused, playlist not found) stops the job with a plain message;
 - rate limits, server errors and lost connections are retried with a growing wait, then pause the job.
@@ -19,9 +19,10 @@ import time
 from pathlib import Path
 
 from beatport import BeatportError
+from errors import BadUrl, PlaylistError
 from match import match_track
 from parse import label, parse_track, search_query
-from soundcloud import BadUrl, PlaylistError, check_url
+from sources import SOURCES, source_of
 
 log = logging.getLogger("sc2bp.jobs")
 
@@ -52,9 +53,11 @@ class Cancelled(Exception):
     pass
 
 
-def new_track(url: str) -> dict:
+def new_track(url: str, source: str = "soundcloud") -> dict:
     return {
         "url": url,
+        "source": source,
+        "uploaderIsArtist": False,  # YouTube Music `Name - Topic` uploads: the channel is the artist
         "state": "new",  # new -> read | blank -> read | unreadable; read -> matched | error
         "title": "",
         "uploader": "",
@@ -68,18 +71,30 @@ def new_track(url: str) -> dict:
     }
 
 
+def parsed_of(track: dict):
+    """The title split into artists, title and mix, with the rules of the track's source (old tracks are SoundCloud)."""
+    return parse_track(
+        track["title"],
+        track["uploader"],
+        track["durationSec"],
+        source=track.get("source", "soundcloud"),
+        uploader_is_artist=track.get("uploaderIsArtist", False),
+    )
+
+
 def chunks(items: list, size: int):
     for start in range(0, len(items), size):
         yield items[start : start + size]
 
 
 class Runner:
-    def __init__(self, data_dir: Path, soundcloud, beatport, sleep=time.sleep, clock=time.time):
-        """`soundcloud` has `list_playlist(url)` and `read_tracks(urls)`; `beatport` is a function returning a client
+    def __init__(self, data_dir: Path, sources, beatport, sleep=time.sleep, clock=time.time):
+        """`sources` maps a source name (`soundcloud`, `youtube`) to a module with `check_url(url)`,
+        `list_playlist(url)` and `read_tracks(urls)`; `beatport` is a function returning a client
         with `search`, `create_playlist` and `add_tracks` (it raises `BeatportError` when it cannot)."""
         self._dir = Path(data_dir) / "jobs"
         self._dir.mkdir(parents=True, exist_ok=True)
-        self._sc = soundcloud
+        self._sources = sources
         self._beatport = beatport
         self._sleep = sleep
         self._clock = clock
@@ -128,7 +143,8 @@ class Runner:
 
     def submit(self, url: str, name: str = "") -> tuple[dict, bool]:
         """A new job, or the job already working on that link. Returns `(summary, created)`."""
-        url = check_url(url)
+        source = source_of(url)
+        url = self._sources[source].check_url(url)
         with self._lock:
             for job in self._jobs.values():
                 if job["url"] == url and job["state"] in ACTIVE:
@@ -138,6 +154,7 @@ class Runner:
             job = {
                 "id": secrets.token_hex(4),
                 "url": url,
+                "source": source,
                 "name": name.strip()[:100],
                 "created": self._clock(),
                 "updated": self._clock(),
@@ -237,7 +254,7 @@ class Runner:
             track = self._track(self._get(job_id), index)
             if track["added"]:
                 raise JobError("that track is already in the Beatport playlist")
-            parsed = parse_track(track["title"], track["uploader"], track["durationSec"])
+            parsed = parsed_of(track)
         found = self._beatport().search(query)  # a BeatportError goes to the route
         result = match_track(parsed, found)
         with self._lock:
@@ -277,7 +294,7 @@ class Runner:
 
     @staticmethod
     def _track_view(index: int, track: dict) -> dict:
-        parsed = parse_track(track["title"], track["uploader"], track["durationSec"])
+        parsed = parsed_of(track)
         return {
             "index": index,
             "url": track["url"],
@@ -322,6 +339,7 @@ class Runner:
             "id": job["id"],
             "name": job["name"],
             "url": job["url"],
+            "source": job.get("source", "soundcloud"),
             "state": job["state"],
             "phase": phase,
             "created": job["created"],
@@ -437,17 +455,33 @@ class Runner:
             job["phase"] = "finished"
         self._end(job, "done")
 
+    def _source(self, job: dict):
+        return self._sources[job.get("source", "soundcloud")]
+
     def _list(self, job: dict) -> None:
         with self._lock:
             if job["tracks"]:
                 return
         self._phase(job, "listing")
         self._check(job)
-        listing = self._retry(job, lambda: self._sc.list_playlist(job["url"]), "reading the playlist")
+        source = self._source(job)
+        listing = self._retry(job, lambda: source.list_playlist(job["url"]), "reading the playlist")
         if len(listing["urls"]) > MAX_TRACKS:
             raise JobError(f"that playlist has more than {MAX_TRACKS} tracks")
         with self._lock:
-            job["tracks"] = [new_track(u) for u in listing["urls"]]
+            job["tracks"] = [new_track(u, job.get("source", "soundcloud")) for u in listing["urls"]]
+            # a source that reads titles while listing (YouTube) leaves nothing for the reading phase
+            for track, info in zip(job["tracks"], listing.get("tracks", []), strict=False):
+                if info.get("title"):
+                    track.update(
+                        state="read",
+                        title=info["title"],
+                        uploader=info.get("uploader", ""),
+                        durationSec=info.get("durationSec"),
+                        uploaderIsArtist=bool(info.get("uploaderIsArtist")),
+                    )
+                else:
+                    track["state"] = "unreadable"
             job["name"] = job["name"] or listing["name"][:100]
             self._save(job)
 
@@ -460,7 +494,8 @@ class Runner:
             for batch in chunks(todo, READ_BATCH):
                 self._check(job)
                 urls = [job["tracks"][i]["url"] for i in batch]
-                infos = self._retry(job, lambda: self._sc.read_tracks(urls), "reading tracks")
+                source = self._source(job)
+                infos = self._retry(job, lambda: source.read_tracks(urls), "reading tracks")
                 with self._lock:
                     for i, info in zip(batch, infos, strict=True):
                         track = job["tracks"][i]
@@ -485,7 +520,7 @@ class Runner:
             self._check(job)
             with self._lock:
                 track = job["tracks"][i]
-                parsed = parse_track(track["title"], track["uploader"], track["durationSec"])
+                parsed = parsed_of(track)
             query = search_query(parsed)
             found: list[dict] = []
             if query:
@@ -527,7 +562,7 @@ class Runner:
         with self._lock:
             playlist = job["playlist"]
         if playlist is None:
-            name = job["name"] or "SoundCloud playlist"
+            name = job["name"] or ("YouTube playlist" if job.get("source") == "youtube" else "SoundCloud playlist")
             made = self._retry(job, lambda: self._beatport().create_playlist(name), "creating the playlist")
             with self._lock:  # saved at once: a restart must never make a second playlist
                 job["playlist"] = playlist = {"id": made["id"], "url": made["url"], "name": name}

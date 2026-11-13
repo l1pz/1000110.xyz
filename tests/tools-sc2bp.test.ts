@@ -10,6 +10,7 @@ import {
     NetworkError,
     realApi,
     soundcloudUrl,
+    sourcePage,
 } from "../src/features/tools/tools/sc2bp/api";
 import {
     actionsFor,
@@ -339,6 +340,22 @@ describe("links", () => {
         expect(beatportUrl(null)).toBeNull();
         expect(soundcloudUrl("https://soundcloud.com/a/b")).toBe("https://soundcloud.com/a/b");
         expect(soundcloudUrl("https://www.beatport.com/x")).toBeNull();
+    });
+
+    it("names the site a track can be opened on, and nothing else", () => {
+        expect(sourcePage("https://soundcloud.com/a/b")).toEqual({
+            url: "https://soundcloud.com/a/b",
+            site: "soundcloud",
+        });
+        expect(sourcePage("https://music.youtube.com/watch?v=x")).toEqual({
+            url: "https://music.youtube.com/watch?v=x",
+            site: "youtube",
+        });
+        expect(sourcePage("https://youtu.be/x")?.site).toBe("youtube");
+        expect(sourcePage("https://youtube.com.evil.example/watch?v=x")).toBeNull();
+        expect(sourcePage("http://www.youtube.com/watch?v=x")).toBeNull();
+        expect(sourcePage("https://www.beatport.com/x")).toBeNull();
+        expect(sourcePage(null)).toBeNull();
     });
 });
 

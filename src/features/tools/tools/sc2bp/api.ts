@@ -22,6 +22,8 @@ export interface Job {
     id: string;
     name: string;
     url: string;
+    /** Where the playlist came from; jobs saved before YouTube existed may leave it out. */
+    source?: "soundcloud" | "youtube";
     state: State;
     phase: Phase;
     created: number;
@@ -123,6 +125,15 @@ export function safeLink(url: string | null, hosts: string[]): string | null {
 
 export const beatportUrl = (url: string | null) => safeLink(url, ["beatport.com"]);
 export const soundcloudUrl = (url: string | null) => safeLink(url, ["soundcloud.com"]);
+export const youtubeUrl = (url: string | null) => safeLink(url, ["youtube.com", "youtu.be"]);
+
+/** A track's own page, with the site's name for the "open on ..." link; null when the link is not one of the sources. */
+export function sourcePage(url: string | null): { url: string; site: "soundcloud" | "youtube" } | null {
+    const sc = soundcloudUrl(url);
+    if (sc) return { url: sc, site: "soundcloud" };
+    const yt = youtubeUrl(url);
+    return yt ? { url: yt, site: "youtube" } : null;
+}
 
 export interface RealApiOptions {
     /** The address to come back to after logging in. */

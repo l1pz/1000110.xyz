@@ -77,7 +77,11 @@ Decided 2026-10-31: use Uptime Kuma for monitoring and email alerts; our own `/s
 - [ ] 2 sc2bp hardening, slimmed (Kuma schedules and alerts): `beatport.py` raises on a missing `tracks` (search) or missing `items` (bulk add; check the real answer first) instead of treating it as success; 15 searches in a row with zero candidates pause the job with a clear reason; pin `yt-dlp` to the version on the server and add an "Upgrading yt-dlp" step to the README (bump, rebuild, canary green, else revert); `GET /api/sc2bp/canary` does the `client_id` scrape, one authenticated Beatport search and one yt-dlp listing of a small public SoundCloud URL (owner picks it), answers 200 or 503 with a JSON reason, result cached 10 minutes; Kuma polls it hourly as an HTTP monitor. pytest for shape changes, the streak and the canary; README and DECISIONS.md (pinning yt-dlp reverses the "unpinned on purpose" comment in `requirements.txt`).
 - [x] 3 Status tool (changed 2026-11-01 by the owner: a tool at `/tools/#status`, not a page, so no status line window; and owner only, behind `tinyauth`, because the info is only relevant to the owner). `src/features/tools/tools/status/{meta,client,parse,view,index}.ts`, shared login code moved to `src/features/tools/auth.ts` (sc2bp re-exports it), `styles/tools.css`, `tests/tools-status.test.ts` (real fixtures plus hand-edited down, maintenance, missing monitor, wrong shape, HTML, 401). Fetches `/api/status-page/main` and `/heartbeat/main` every 60 s while the tab is visible; one block per group, 20-beat bar, 24 h uptime, banner; a monitor with no beat for 5 minutes shows `stale`; an unknown shape shows "status unavailable".
   Handoff (2026-11-01, branch `feat/status-page`): `kuma/compose.yaml` now puts `tinyauth` on the `kuma-status` router; Deployed 2026-11-01: an anonymous GET now gets 401 (a browser gets a 302 to the tinyauth login). Monitor names no longer need to be neutral. In `npm run dev` the tool reads `tests/fixtures/kuma/`.
-- Open: is `ruminant` monitored? Which small public SoundCloud URL for the canary? Next after this phase: YouTube playlist input for sc2bp (bot-check on the server IP decides whether it needs cookies).
+- Open: is `ruminant` monitored? Which small public SoundCloud URL for the canary? YouTube playlist input for sc2bp: done (see Phase 3c-yt below).
+
+## Phase 3c-yt: sc2bp YouTube input
+- [x] YouTube / YouTube Music playlist links in sc2bp (`sc2bp/youtube.py`, `sources.py`, `errors.py`, title cleanup in `parse.py`, optional cookies file for private playlists, tool retitled "playlist to beatport").
+  Handoff (2026-11-13, branch `feat/sc2bp-youtube`): pytest 194 and `npm run check` green (run in throwaway containers; the host has no pytest or npm). Not yet done: a real job on the server after deploy (public "Top 100 Songs Global" playlist) and a look at the tool at 360 and 390 px (label changes only, but never viewed). Private playlists untested until the owner adds a cookies file (README).
 
 ## Phase 3d: Server hardening (netcup server, found by a read-only check on 2026-10-31)
 Superseded by Phase 3f (2026-11-01): do not pick tasks from this list; it stays as the record of the findings. Task 1 to 3 are now 3f Phase 2; 4, 5 and 7 are 3f Phase 3; 6 is 3f Phase 0.
@@ -292,3 +296,7 @@ Needs a short plan shown in the terminal before any code. Storage is decided: op
 ### Session 23 (2026-11-01)
 - Done (branch `docs/server-refactor-plan`, docs only, nothing changed on the server): server refactor planned with the owner and written down as Phase 3f, which replaces Phase 3d; decisions in DECISIONS.md.
 - Next: start Phase 3f, Phase 0 task 1, which needs the owner's sudo password. Not started on purpose: the owner continues on 2026-11-02.
+
+### Session 24 (2026-11-13)
+- Done (branch `feat/sc2bp-youtube`): YouTube / YouTube Music playlist input for sc2bp, see Phase 3c-yt. A server test showed public playlists list fine with no bot check, and the flat listing is enough (no reading phase).
+- Next: merge, then run one real job after the auto-deploy; add a cookies file only if the owner wants private playlists.

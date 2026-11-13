@@ -17,6 +17,9 @@ from errors import BadUrl
 from jobs import JobError, Runner
 from pydantic import BaseModel, Field, StringConstraints
 from sources import SOURCES
+from sync_routes import router as sync_router
+from syncer import Syncer
+import youtube
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
 
@@ -56,6 +59,9 @@ async def lifespan(app: FastAPI):
     app.state.runner = Runner(DATA_DIR, SOURCES, beatport_client)
     worker = threading.Thread(target=app.state.runner.run_forever, args=(stop,), name="sc2bp-worker", daemon=True)
     worker.start()
+    app.state.syncer = Syncer(DATA_DIR, youtube, beatport_client)
+    syncer_worker = threading.Thread(target=app.state.syncer.run_forever, args=(stop,), name="sc2bp-sync", daemon=True)
+    syncer_worker.start()
     yield
     stop.set()
 
@@ -178,3 +184,4 @@ def search(job_id: str, index: int, body: SearchIn, runner: Runner = Depends(get
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 app.include_router(router)
+app.include_router(sync_router)

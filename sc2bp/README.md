@@ -34,6 +34,25 @@ A job is saved to `/data/jobs/<id>.json` (written to a temp file and renamed) af
 - `POST /jobs/{id}/tracks/{index}/pick {id|null}` picks one of the suggestions (or undoes the pick)
 - `POST /jobs/{id}/tracks/{index}/search {query}` searches Beatport by hand and offers the results
 
+## Liked-music sync (`syncer.py`, `sync_routes.py`, routes under `/api/sc2bp/sync`)
+Keeps a YouTube playlist (default: Liked music, `list=LM`) filed into Beatport playlists grouped by genre, nightly and on a button. The tool for it is `/tools/#sync` (a later PR); everything below already works over the API.
+
+**Rules.** It only adds: nothing is removed from Beatport, an unliked song stays, a track the owner deletes from a playlist is remembered as `dismissed` and never added back. What is filed is decided by reading the Beatport playlists, never by the add call's answer: after adding, the playlist is read again, present means `filed`, absent means `unavailable` (tried again after 30 days, at most 3 times). Every phase can run twice with the same result, so a crash or a restart just carries on.
+
+**Playlists** are named `<prefix> - <Group> #<n>` (default `Liked - Techno #1`), at most `cap` tracks each (default 100), oldest likes first, and found again by that name if the state is lost. Groups are Beatport genres merged into families (`DEFAULT_GROUPS` in `syncer.py`, editable through `PUT /config`); a genre no group lists goes to `Other`. Genres can move between groups any time; a group with playlists cannot be renamed or removed (its name is in the playlist names).
+
+**A run** (one at a time): `youtube` (list the likes with the cookie file; an empty list, or fewer than half the known likes, is refused as "looks wrong" and changes nothing) → `beatport` (find the group playlists, read what is in them) → `plan` (what is filed, dismissed, or held because its playlist vanished) → `match` (search Beatport for new likes only; not-found tracks are tried again after 14 days, 3 times in all) → preview → `file`. The **first** run stops at a preview ("add 640 tracks, create 8 playlists") and goes on only after `POST /run/{id}/confirm`; after one good run, nightly runs never wait. A playlist that vanished from Beatport is never refilled by itself: it shows up in the `gone` inbox and the owner chooses `recreate` or `forget`.
+
+**State** is two files in `/data/sync/`: `config.json` and `state.json` (written to a temp file and renamed; `state.json.bak` is the copy from the start of the last run). A file that cannot be read stops the sync (health `broken`) and is never overwritten.
+
+**Nightly**: `config.nightly` (off by default; 04:30 `Europe/Budapest`). Runs once per night slot, catches up once after downtime, retries a failed night once after 6 hours, and never retries expired cookies in a loop. It only starts after a first good run.
+
+**Health** `GET /sync/health` answers 200 (also before anything is set up, so a fresh deploy does not alert) or 503 when the owner has to act: `needs-cookies`, `failed` (the last run), `stale` (nightly on and no good run for 36 hours) or `broken`. The Kuma monitor `sync` watches it (`kuma/monitors.json`; add it with `provision.sh` after the deploy).
+
+**First use**: `POST /import-job {"jobId": "<finished conversion of the same playlist>"}` reuses that conversion's matches and the owner's picks (no searching again), `POST /run`, read the preview, `POST /run/{id}/confirm`. The old count-split playlists are not touched and not looked at.
+
+Routes: `GET /` (status, config, groups, counts, health), `POST /run`, `POST /run/{id}/confirm|cancel`, `GET /runs`, `GET /runs/{id}`, `GET /inbox?filter=review|notfound|unavailable|skipped|gone`, `POST /videos/{id}/pick|search|skip|restore|group`, `PUT /config`, `POST /import-job`, `POST /gone`, `GET /health`.
+
 ## Deploy (by hand, like Ruminant)
 1. Copy this folder to `/opt/stacks/sc2bp/` (without `tests/`).
 2. `mkdir data && chmod 2777 data`, and create `.env` (mode 600) with `BEATPORT_USERNAME=` and `BEATPORT_PASSWORD=`. Never commit it. Compose reads `$` in an `.env` value as a variable: if the password has `$` followed by letters or `{`, wrap the value in single quotes (`BEATPORT_PASSWORD='pa$$word'`). Check the length inside the container with `docker exec sc2bp python -c "import os; print(len(os.environ['BEATPORT_PASSWORD']))"` (never print the value).

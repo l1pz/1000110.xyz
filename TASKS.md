@@ -87,7 +87,8 @@ Decided 2026-10-31: use Uptime Kuma for monitoring and email alerts; our own `/s
 Keep YouTube Music "Liked music" synced to Beatport playlists grouped by genre (families, at most 100 per playlist, `Liked - <Group> #n`), nightly and on a button, never removing anything. Same `sc2bp` service, separate tool. Three PRs:
 - [x] 1 Foundations: Beatport `genre`/`subGenre` on candidates, `my_playlists`, `playlist_tracks`, `tracks_by_ids`; retry helper extracted to `resilience.py`.
   Handoff (2026-11-13, branch `feat/sync-foundations`): pytest 221 green. Found that Beatport's add answer and availability flags are unreliable (see README), so the sync must verify by re-reading playlists.
-- [ ] 2 Engine, API, scheduler, health: `syncer.py`, `/api/sc2bp/sync/*`, state in `/data/sync/`, import of the finished conversion job `6aad4181`, Kuma monitor `sync`.
+- [x] 2 Engine, API, scheduler, health: `syncer.py`, `/api/sc2bp/sync/*`, state in `/data/sync/`, import of the finished conversion job `6aad4181`, Kuma monitor `sync`.
+  Handoff (2026-11-13, branch `feat/sync-engine`): pytest 304 green, kuma tests green. After the deploy: `provision.sh` on the server to add the `sync` monitor; then import job `6aad4181`, `POST /run`, check the preview, confirm. The UI is task 3. One deploy lesson: the Dockerfile copies `*.py` now (see PR #59), so new modules ship by themselves.
 - [ ] 3 Tool UI `tools/sync` (home, inbox, groups, settings, history), shared review pieces moved to `src/features/tools/beatport-review.ts`.
 
 ## Phase 3d: Server hardening (netcup server, found by a read-only check on 2026-10-31)

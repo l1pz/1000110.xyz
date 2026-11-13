@@ -26,7 +26,7 @@ from sources import SOURCES, source_of
 
 log = logging.getLogger("sc2bp.jobs")
 
-MAX_TRACKS = 1000
+MAX_TRACKS = 2000
 MAX_ACTIVE = 20  # queued, running or paused jobs
 READ_BATCH = 10
 SAVE_EVERY = 5  # a save after this many searches, or after SAVE_SECS, whichever comes first:

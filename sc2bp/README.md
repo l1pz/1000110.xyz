@@ -10,7 +10,7 @@ The service behind the `sc2bp` tool (`/tools/#sc2bp`): converts a SoundCloud or 
 ## How a job runs
 One worker runs one job at a time (the rest wait in the queue, at most 20 active jobs). Each phase only does what is still undone, so a restart, a pause or a retry carries on from the last save:
 
-1. **listing**: `yt-dlp --flat-playlist` gives the track links (up to 1000 tracks).
+1. **listing**: `yt-dlp --flat-playlist` gives the track links (up to 2000 tracks).
 2. **reading** (SoundCloud only): the links are resolved 10 at a time (title, uploader, length). A track that comes back blank is read once more at the end; if it is still blank it is `unreadable` (private or deleted) and never fails the job.
 3. **matching**: each track is searched on Beatport and scored by `parse.py` and `match.py`: `match` (confident, picked at once), `maybe` or `none` (left for the optional review).
 4. **creating**: the Beatport playlist is made from the picked tracks, and they are added 50 at a time. The playlist id is saved the moment it exists, so a restart never makes a second playlist.

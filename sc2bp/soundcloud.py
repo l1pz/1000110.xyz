@@ -20,7 +20,7 @@ HOSTS = {"soundcloud.com", "www.soundcloud.com", "m.soundcloud.com", "on.soundcl
 API_HOSTS = {"api.soundcloud.com", "api-v2.soundcloud.com"}
 API_TRACK = re.compile(r"/tracks/\d+")
 LIST_TIMEOUT_SECS = 120
-MAX_TRACKS = 1000
+MAX_TRACKS = 2000
 WORKERS = 6
 
 

@@ -46,6 +46,9 @@ Public and unlisted playlists need nothing. For a private one, put a Netscape-fo
 - **yt-dlp breaks when SoundCloud or YouTube change.** Rebuild to get the newest release: `docker compose build --no-cache && docker compose up -d`. A broken `yt-dlp` shows up as failed or paused jobs with a message; nothing is lost.
 - **Beatport has no public API.** `beatport.py` borrows the public `client_id` from `https://api.beatport.com/v4/docs/` and logs in as the owner (the same flow as the beets-beatport4 plugin; playlist calls as in beatport-mcp). It is a ToS grey area, accepted for personal use, and it can break whenever Beatport changes that page or the flow. The token is cached in `data/token.json` (mode 600) and refreshed; a refused token triggers one fresh login. Beatport calls are spaced at least 0.4 s apart.
 - **Jobs pile up** in `data/jobs/`; delete finished ones from the tool.
+- **Beatport's add answer is not the truth.** Measured on the real 1521-track conversion: of the 75 tracks the add call "refused", 49 were in the playlists, and 13 tracks it "took" were missing. `is_available_for_streaming` does not predict it either. So `Beatport.playlist_tracks()` (what is really in a playlist) is what the sync trusts; the conversion jobs still go by the add answer.
+- Beatport calls beyond the conversion: `my_playlists()`, `playlist_tracks(id)` (every page, tombstones marked) and `tracks_by_ids(ids)` (batches of 50); every candidate now carries its `genre` and `subGenre`.
+- Retrying lives in `resilience.py` (`retrying`, `BACKOFF_SECS`): 5, 15, 45, 120, 300 s, `Retry-After` honoured, then the caller pauses or fails.
 - Known edge: if the server dies in the instant between Beatport taking a batch of tracks and the job saving that fact, that batch is sent again on resume and Beatport may list those tracks twice.
 
 ## Tests

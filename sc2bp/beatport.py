@@ -25,6 +25,8 @@ EXPIRY_SLACK_SECS = 30
 MIN_GAP_SECS = 0.4
 ADD_BATCH = 50
 PLAYLIST_URL = "https://www.beatport.com/library/playlists/"
+PAGE_SIZE = 100
+MAX_PAGES = 200  # a loop guard: 20,000 playlists or items is not a real answer
 
 
 class BeatportError(Exception):
@@ -48,8 +50,15 @@ def retry_after(response: httpx.Response) -> float | None:
         return None
 
 
+def name_of(value: object) -> str | None:
+    """The `name` of a Beatport genre or sub-genre object (`{"id": 5, "name": "House", ...}`), or None."""
+    return str(value["name"]) if isinstance(value, dict) and value.get("name") else None
+
+
 def candidate(track: dict) -> dict:
-    """A Beatport track as the browser's `Candidate`: id, title, mix, artists, durationSec."""
+    """A Beatport track as the browser's `Candidate`: id, title, mix, artists, durationSec, and the genre Beatport files
+    it under (the sync groups by it). Beatport's availability flags are left out on purpose: they do not predict
+    whether a track can really be added to a playlist."""
     ms = track.get("length_ms")
     return {
         "id": int(track["id"]),
@@ -57,6 +66,8 @@ def candidate(track: dict) -> dict:
         "mix": str(track.get("mix_name") or ""),
         "artists": [str(a["name"]) for a in track.get("artists") or [] if isinstance(a, dict) and "name" in a],
         "durationSec": round(ms / 1000) if isinstance(ms, (int, float)) and ms > 0 else None,
+        "genre": name_of(track.get("genre")),
+        "subGenre": name_of(track.get("sub_genre")),
     }
 
 
@@ -240,3 +251,47 @@ class Beatport:
         if items is None:
             return list(ids)
         return [i["track_id"] for i in items if isinstance(i, dict) and i.get("track_available", True) and "track_id" in i]
+
+    def _pages(self, path: str, params: dict | None = None) -> list[dict]:
+        """Every `results` item of a paginated list, following `next` until it is gone."""
+        items: list[dict] = []
+        for page in range(1, MAX_PAGES + 1):
+            data = self._request("GET", path, params={**(params or {}), "per_page": PAGE_SIZE, "page": page})
+            items += [i for i in data.get("results") or [] if isinstance(i, dict)]
+            if not data.get("next"):
+                return items
+        raise BeatportError(f"Beatport kept answering with more pages for {path}")
+
+    def my_playlists(self) -> list[dict]:
+        """All of the owner's playlists: `{id, name, count, url}`."""
+        return [
+            {
+                "id": int(p["id"]),
+                "name": str(p.get("name") or ""),
+                "count": int(p.get("track_count") or 0),
+                "url": f"{PLAYLIST_URL}{int(p['id'])}",
+            }
+            for p in self._pages("/my/playlists/")
+            if isinstance(p.get("id"), int)
+        ]
+
+    def playlist_tracks(self, playlist_id: int) -> list[dict]:
+        """What is really in a playlist, in order: the candidate fields plus `tombstoned` (Beatport pulled the track).
+        This is the truth the sync trusts, not the answer of an add call."""
+        out = []
+        for item in self._pages(f"/my/playlists/{playlist_id}/tracks/"):
+            track = item.get("track")
+            if isinstance(track, dict) and "id" in track:
+                out.append({**candidate(track), "tombstoned": bool(item.get("tombstoned"))})
+        return out
+
+    def tracks_by_ids(self, ids: list[int]) -> list[dict]:
+        """The tracks with these ids as candidates (genre included); an id Beatport does not know is left out."""
+        out = []
+        for start in range(0, len(ids), ADD_BATCH):
+            batch = ids[start : start + ADD_BATCH]
+            data = self._request(
+                "GET", "/catalog/tracks/", params={"id": ",".join(str(int(i)) for i in batch), "per_page": PAGE_SIZE}
+            )
+            out += [candidate(t) for t in data.get("results") or [] if isinstance(t, dict) and "id" in t]
+        return out

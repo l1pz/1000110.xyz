@@ -1,7 +1,8 @@
 """Fakes for the two outside services, and a scenario with every kind of track."""
 
 from beatport import BeatportError
-from soundcloud import BadUrl, PlaylistError
+import youtube
+from errors import BadUrl, PlaylistError
 
 PLAYLIST = "https://soundcloud.com/someone/sets/my-set"
 
@@ -41,6 +42,9 @@ SCENARIO = [
 
 
 class FakeSoundCloud:
+    def check_url(self, link):
+        return link.strip()
+
     def __init__(self, scenario=SCENARIO):
         self.scenario = scenario
         self.list_calls = 0
@@ -65,6 +69,44 @@ class FakeSoundCloud:
                 title = ""
             out.append({"title": title, "uploader": "Up", "durationSec": 300.0 if title else None})
         return out
+
+
+YOUTUBE_PLAYLIST = "https://www.youtube.com/playlist?list=PLabc123"  # already canonical
+
+
+def yt_url(i):
+    return f"https://www.youtube.com/watch?v=v{i}"
+
+
+class FakeYouTube:
+    """Reads titles while listing, like the real one: `read_tracks` must never be needed."""
+
+    def __init__(self, scenario=SCENARIO, topic: set[int] = frozenset()):
+        self.scenario = scenario
+        self.topic = topic
+        self.list_calls = 0
+        self.read_calls: list[list[str]] = []
+        self.name = "My mix"
+
+    def check_url(self, link):
+        return youtube.check_url(link)  # the real rules: they are what the routes and jobs rely on
+
+    def list_playlist(self, link):
+        self.list_calls += 1
+        tracks = [
+            {
+                "title": title,
+                "uploader": "Up",
+                "durationSec": 300.0 if title else None,
+                "uploaderIsArtist": i in self.topic,
+            }
+            for i, (_, title) in enumerate(self.scenario)
+        ]
+        return {"name": self.name, "urls": [yt_url(i) for i in range(len(tracks))], "tracks": tracks}
+
+    def read_tracks(self, urls):
+        self.read_calls.append(list(urls))
+        raise AssertionError("YouTube tracks are read while listing")
 
 
 class FakeBeatport:

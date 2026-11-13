@@ -91,7 +91,7 @@ export function fakeApi(): Api {
             state = "failed";
             phase = progress.phase = "listing";
             error = {
-                message: "yt-dlp could not read that playlist (private, deleted, or SoundCloud changed)",
+                message: "yt-dlp could not read that playlist (private, deleted, or the site changed)",
                 phase: "listing",
             };
         } else if (f.kind === "pause" && e >= 6) {
@@ -173,7 +173,9 @@ export function fakeApi(): Api {
         const label = gone ? "(could not be read)" : `Artist ${i} - Song ${i}`;
         return {
             index: i,
-            url: `https://soundcloud.com/demo/track-${i}`,
+            url: f.url.includes("youtu")
+                ? `https://www.youtube.com/watch?v=demo${i}`
+                : `https://soundcloud.com/demo/track-${i}`,
             label,
             title: gone ? "" : label,
             uploader: "Demo",

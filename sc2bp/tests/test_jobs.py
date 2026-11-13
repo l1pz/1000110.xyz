@@ -3,22 +3,23 @@ import json
 import jobs
 import pytest
 from beatport import BeatportError
-from fakes import PLAYLIST, SCENARIO, Clock, Crash, FakeBeatport, FakeSoundCloud, transient
+from errors import BadUrl, PlaylistError
+from fakes import PLAYLIST, SCENARIO, YOUTUBE_PLAYLIST, Clock, Crash, FakeBeatport, FakeSoundCloud, FakeYouTube, transient
 from jobs import JobError, Runner
-from soundcloud import BadUrl, PlaylistError
 
 
 class World:
     def __init__(self, tmp_path, scenario=SCENARIO):
         self.dir = tmp_path
         self.sc = FakeSoundCloud(scenario)
+        self.yt = FakeYouTube(scenario)
         self.bp = FakeBeatport(scenario)
         self.clock = Clock()
         self.runner = self.start()
 
     def start(self):
         """A new server process on the same data directory."""
-        return Runner(self.dir, self.sc, lambda: self.bp, sleep=self.clock.sleep, clock=self.clock)
+        return Runner(self.dir, {"soundcloud": self.sc, "youtube": self.yt}, lambda: self.bp, sleep=self.clock.sleep, clock=self.clock)
 
     def run(self, link=PLAYLIST, name=""):
         job, _ = self.runner.submit(link, name)
@@ -505,3 +506,60 @@ def test_a_save_survives_a_file_that_is_briefly_locked(world, monkeypatch):
     monkeypatch.setattr(jobs.os, "replace", flaky)
     world.runner.submit(PLAYLIST)
     assert len(calls) == 2 and len(world.start().list_jobs()) == 1
+
+
+def test_a_youtube_job_skips_the_reading_phase_and_matches_from_the_listing(world):
+    job = world.run(YOUTUBE_PLAYLIST)
+    assert job["state"] == "done" and job["source"] == "youtube"
+    assert world.yt.read_calls == [] and world.sc.list_calls == 0
+    assert world.bp.added == [1000, 1001, 1005]
+    assert world.bp.created == ["My mix"]
+
+
+def test_blank_youtube_entries_are_unreadable_and_do_not_fail_the_job(world):
+    job = world.run(YOUTUBE_PLAYLIST)
+    assert job["counts"]["unreadable"] == 1
+
+
+def test_a_topic_channel_counts_as_the_artist_when_matching(tmp_path):
+    scenario = [("match", "Artist0 - Song0")]
+    w = World(tmp_path, scenario)
+    w.yt.scenario = [("match", "Song0")]
+    w.yt.topic = {0}
+    w.bp.catalogue = {"Up Song0": [{"id": 5, "title": "Song0", "mix": "Original Mix", "artists": ["Up"], "durationSec": 300}]}
+    job = w.run(YOUTUBE_PLAYLIST)
+    assert job["counts"]["picked"] == 1
+
+
+def test_the_default_playlist_name_says_where_it_came_from(world):
+    world.yt.name = ""
+    world.run(YOUTUBE_PLAYLIST)
+    assert world.bp.created == ["YouTube playlist"]
+
+
+def test_a_youtube_link_without_a_playlist_is_refused(world):
+    with pytest.raises(BadUrl):
+        world.runner.submit("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+
+
+def test_the_same_link_in_two_sources_does_not_clash(world):
+    first, _ = world.runner.submit(PLAYLIST)
+    second, created = world.runner.submit(YOUTUBE_PLAYLIST)
+    assert created and first["id"] != second["id"]
+
+
+def test_jobs_saved_before_youtube_existed_still_load_as_soundcloud(world):
+    done = world.run()
+    queued, _ = world.runner.submit("https://soundcloud.com/a/sets/other")
+    for job_id in (done["id"], queued["id"]):
+        path = world.dir / "jobs" / f"{job_id}.json"
+        saved = json.loads(path.read_text(encoding="utf-8"))
+        del saved["source"]
+        for t in saved["tracks"]:
+            del t["source"], t["uploaderIsArtist"]
+        path.write_text(json.dumps(saved), encoding="utf-8")
+    again = world.start()
+    assert again.get(done["id"])["source"] == "soundcloud"
+    assert again.tracks(done["id"], "all")["total"] == len(SCENARIO)
+    again.process_next()
+    assert again.get(queued["id"])["state"] == "done"

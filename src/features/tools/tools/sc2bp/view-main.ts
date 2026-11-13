@@ -7,9 +7,9 @@ import { pollDelay, rowModel, sortJobs, tabTitle } from "./jobs";
 export function mainView(ctx: Ctx): void {
     const { api, root, signal } = ctx;
     const state = toolState("sc2bp");
-    const url = lineInput("soundcloud playlist url", "https://soundcloud.com/user/sets/name");
+    const url = lineInput("playlist url (soundcloud or youtube)", "https://soundcloud.com/user/sets/name");
     state.bindText("u", url.input);
-    const name = lineInput("beatport playlist name (optional)", "the same as on soundcloud");
+    const name = lineInput("beatport playlist name (optional)", "the same as the source playlist");
     const form = statusLine();
     const startBtn = button("start conversion", () => void begin());
     const heading = h("p", "dim", "jobs/");
@@ -19,7 +19,7 @@ export function mainView(ctx: Ctx): void {
 
     async function begin(): Promise<void> {
         const playlist = url.input.value.trim();
-        if (!playlist) return form.set("paste a soundcloud playlist link first", true);
+        if (!playlist) return form.set("paste a soundcloud or youtube playlist link first", true);
         startBtn.disabled = true;
         form.set("starting...");
         try {

@@ -1,4 +1,4 @@
-"""sc2bp service: SoundCloud playlist to Beatport playlist, as background jobs that go on with the page closed.
+"""sc2bp service: SoundCloud or YouTube playlist to Beatport playlist, as background jobs that outlive the page.
 
 Traefik puts the tinyauth forward auth in front of every route, and tinyauth is owner-only, so there is no user check
 here. The work is in `jobs.py`; this file is the HTTP shape of it."""
@@ -11,12 +11,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
 
-import soundcloud
 from beatport import Beatport, BeatportError
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
+from errors import BadUrl
 from jobs import JobError, Runner
 from pydantic import BaseModel, Field, StringConstraints
-from soundcloud import BadUrl
+from sources import SOURCES
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
 
@@ -52,7 +52,7 @@ def get_runner(request: Request) -> Runner:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     stop = threading.Event()
-    app.state.runner = Runner(DATA_DIR, soundcloud, beatport_client)
+    app.state.runner = Runner(DATA_DIR, SOURCES, beatport_client)
     worker = threading.Thread(target=app.state.runner.run_forever, args=(stop,), name="sc2bp-worker", daemon=True)
     worker.start()
     yield

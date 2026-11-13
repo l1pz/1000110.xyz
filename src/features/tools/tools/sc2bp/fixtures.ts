@@ -12,6 +12,7 @@ interface Fake {
     created: number;
     kind: "ok" | "fail" | "pause" | "big";
     total: number;
+    split: number;
     /** Seconds the job has been stopped for (cancel, pause, failure): the clock for its progress stands still. */
     lost: number;
     stoppedAt: number | null;
@@ -66,6 +67,18 @@ const jobs = new Map<string, Fake>();
 export function fakeApi(): Api {
     const elapsed = (f: Fake, t = now()) => (f.stoppedAt ?? t) - f.created - f.lost;
     const scale = (f: Fake) => (f.kind === "big" ? 6 : 1);
+
+    /** The Beatport playlists the fake would have made for `n` tracks: full ones of `split` tracks, then the rest. */
+    function playlistsOf(f: Fake, n: number): Job["playlists"] {
+        if (n <= 0) return [];
+        const size = f.split > 0 ? f.split : n;
+        return Array.from({ length: Math.ceil(n / size) }, (_, i) => ({
+            id: 77 + i,
+            url: `https://www.beatport.com/library/playlists/${77 + i}`,
+            name: f.split > 0 ? `${f.name} #${i + 1}` : f.name,
+            count: Math.min(size, n - i * size),
+        }));
+    }
 
     function snapshot(f: Fake): Job {
         const t = now();
@@ -152,10 +165,8 @@ export function fakeApi(): Api {
             pendingPicks: pendingOf(f).length,
             waiting,
             error,
-            playlist:
-                finished || counts.added > 0
-                    ? { id: 77, url: "https://www.beatport.com/library/playlists/77", name: f.name }
-                    : null,
+            split: f.split,
+            playlists: playlistsOf(f, finished || counts.added > 0 ? counts.picked : 0),
         };
     }
 
@@ -200,7 +211,7 @@ export function fakeApi(): Api {
         async me() {
             await pause(100);
         },
-        async start(url, name) {
+        async start(url, name, split) {
             await pause(300);
             const existing = [...jobs.values()].find(
                 (f) => f.url === url && ["running", "queued", "paused"].includes(snapshot(f).state),
@@ -220,6 +231,7 @@ export function fakeApi(): Api {
                 created: now(),
                 kind,
                 total: kind === "big" ? 400 : 40,
+                split,
                 lost: 0,
                 stoppedAt: null,
                 stop: null,

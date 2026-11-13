@@ -301,3 +301,4 @@ Needs a short plan shown in the terminal before any code. Storage is decided: op
 - Done (branch `feat/sc2bp-youtube`): YouTube / YouTube Music playlist input for sc2bp, see Phase 3c-yt. A server test showed public playlists list fine with no bot check, and the flat listing is enough (no reading phase).
 - Next: merge, then run one real job after the auto-deploy; add a cookies file only if the owner wants private playlists.
 - 2026-11-13 (branch `feat/sc2bp-2000-tracks`): sc2bp track limit raised from 1000 to 2000 (owner's Liked music has 1521); see DECISIONS.md.
+- 2026-11-13 (branch `feat/sc2bp-split-playlists`): sc2bp splits the Beatport result into numbered playlists of at most N tracks (form default 100, 0 = one); see DECISIONS.md. pytest 210, `npm run check` green. Not yet tried against real Beatport.

@@ -49,7 +49,8 @@ const job = (over: Partial<Job> = {}): Job => ({
     pendingPicks: 0,
     waiting: null,
     error: null,
-    playlist: null,
+    split: 0,
+    playlists: [],
     ...over,
 });
 
@@ -302,6 +303,18 @@ describe("what to tell the owner", () => {
             lines: ["not found on Beatport: 20", "found, but not sure: 6", "could not be read (private or deleted): 2"],
         });
         expect(resultModel(done({ none: 0, maybe: 0, unreadable: 0, error: 4 })).lines).toEqual(["hit an error: 4"]);
+        const lists = [1, 2, 3, 4].map((n) => ({
+            id: n,
+            url: `https://www.beatport.com/library/playlists/${n}`,
+            name: `x #${n}`,
+            count: 100,
+        }));
+        expect(resultModel(done({}, { split: 100, playlists: lists })).headline).toBe(
+            "372 of 400 tracks are in 4 Beatport playlists",
+        );
+        expect(resultModel(done({}, { split: 100, playlists: lists.slice(0, 1) })).headline).toBe(
+            "372 of 400 tracks are in your Beatport playlist",
+        );
         expect(resultModel(done({ added: 0, match: 0, none: 0, maybe: 0, unreadable: 0 }))).toEqual({
             headline: "nothing was added to Beatport",
             lines: [],
@@ -375,11 +388,13 @@ describe("the client", () => {
 
     it("starts a job with a JSON body", async () => {
         const { api, calls } = recording({ job: job(), created: true });
-        const result = await api.start("https://soundcloud.com/a/sets/b", "Mine");
+        const result = await api.start("https://soundcloud.com/a/sets/b", "Mine", 100);
         expect(result.created).toBe(true);
         expect(calls[0].url).toBe("/api/sc2bp/jobs");
         expect(calls[0].init?.method).toBe("POST");
-        expect(calls[0].init?.body).toBe(JSON.stringify({ url: "https://soundcloud.com/a/sets/b", name: "Mine" }));
+        expect(calls[0].init?.body).toBe(
+            JSON.stringify({ url: "https://soundcloud.com/a/sets/b", name: "Mine", split: 100 }),
+        );
     });
 
     it("lists and reads jobs", async () => {

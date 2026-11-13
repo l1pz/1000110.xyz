@@ -15,6 +15,8 @@ One worker runs one job at a time (the rest wait in the queue, at most 20 active
 3. **matching**: each track is searched on Beatport and scored by `parse.py` and `match.py`: `match` (confident, picked at once), `maybe` or `none` (left for the optional review).
 4. **creating**: the Beatport playlist is made from the picked tracks, and they are added 50 at a time. The playlist id is saved the moment it exists, so a restart never makes a second playlist.
 
+**Split playlists.** A job has a `split` (tracks per playlist; the tool's form sends 100, the API default is 0 = one playlist). With a split, playlists are named `Name #1`, `Name #2`, ... and hold at most `split` tracks each. Picked tracks fill them in source order; `Runner._assign` decides each track's playlist (`track["list"]`) and saves it before anything is added, so a restart adds the same tracks to the same playlists. A track picked later in the review goes to the first playlist with room, or starts the next one. Two source tracks that found the same Beatport track share one place. A job saved before this (one `playlist`) loads as a single playlist.
+
 A job is saved to `/data/jobs/<id>.json` (written to a temp file and renamed) after every batch, and every 5 searches or 2 seconds while matching, so a crash costs a couple of searches at most. After a restart a job that was running is queued again.
 
 **Errors are sorted:**
@@ -25,7 +27,7 @@ A job is saved to `/data/jobs/<id>.json` (written to a temp file and renamed) af
 
 ## Routes (`/api/sc2bp`)
 - `GET /health`, `GET /me` (a 200 through Traefik means the visitor is logged in)
-- `POST /jobs {url, name?}` starts a job; a link already being converted gives that job back (`created: false`)
+- `POST /jobs {url, name?, split?}` starts a job (`split` 0 to 2000); a link already being converted gives that job back (`created: false`)
 - `GET /jobs`, `GET /jobs/{id}`: state, phase, progress, counts, waiting (a retry countdown), error, the Beatport playlist
 - `GET /jobs/{id}/tracks?filter=unmatched|maybe|none|error|unreadable|picked|all&offset=&limit=` for the review
 - `POST /jobs/{id}/cancel`, `/retry`, `/apply` (add the tracks picked since the playlist was made), `DELETE /jobs/{id}` (the record only, never the Beatport playlist)

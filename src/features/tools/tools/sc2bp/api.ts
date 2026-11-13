@@ -37,8 +37,22 @@ export interface Job {
     pendingPicks: number;
     waiting: { until: number; reason: string } | null;
     error: { message: string; phase: Phase } | null;
-    playlist: { id: number; url: string; name: string } | null;
+    /** The most tracks per Beatport playlist; 0 means everything goes into one. */
+    split: number;
+    /** The Beatport playlists made so far, in order (`Name #1`, `Name #2`, ...). */
+    playlists: PlaylistRef[];
 }
+
+export interface PlaylistRef {
+    id: number;
+    url: string;
+    name: string;
+    /** Tracks in it now. */
+    count: number;
+}
+
+/** The most tracks per playlist the server accepts. */
+export const MAX_SPLIT = 2000;
 
 export interface Candidate {
     id: number;
@@ -78,7 +92,7 @@ export interface Api {
     /** Resolves when the visitor is logged in. */
     me(signal?: AbortSignal): Promise<void>;
     /** Starts a conversion; a link already being converted gives that job back with `created: false`. */
-    start(url: string, name: string, signal?: AbortSignal): Promise<{ job: Job; created: boolean }>;
+    start(url: string, name: string, split: number, signal?: AbortSignal): Promise<{ job: Job; created: boolean }>;
     list(signal?: AbortSignal): Promise<Job[]>;
     get(id: string, signal?: AbortSignal): Promise<Job>;
     tracks(id: string, filter: Filter, offset: number, limit: number, signal?: AbortSignal): Promise<TrackPage>;
@@ -186,7 +200,7 @@ export function realApi({
         async me(signal) {
             await call("GET", "/me", signal);
         },
-        start: (url, name, signal) => call("POST", "/jobs", signal, { url, name }),
+        start: (url, name, split, signal) => call("POST", "/jobs", signal, { url, name, split }),
         async list(signal) {
             return (await call<{ jobs: Job[] }>("GET", "/jobs", signal)).jobs;
         },

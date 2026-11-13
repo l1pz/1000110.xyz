@@ -98,10 +98,17 @@ export function jobView(ctx: Ctx, id: string): void {
             const result = resultModel(j);
             parts.push(h("p", "result", result.headline));
             if (result.lines.length) parts.push(h("p", "dim resultlines", result.lines.join("\n")));
-            const url = beatportUrl(j.playlist?.url ?? null);
-            if (url) {
+            for (const list of j.playlists) {
+                const url = beatportUrl(list.url);
+                if (!url) continue;
                 const p = h("p");
-                p.append(external("open the playlist on Beatport", url));
+                p.append(
+                    external(
+                        j.playlists.length > 1 ? `open ${list.name} on Beatport` : "open the playlist on Beatport",
+                        url,
+                    ),
+                    h("span", "dim", ` · ${list.count} tracks`),
+                );
                 parts.push(p);
             }
         } else if (j.state === "cancelled" && j.counts.added > 0) {

@@ -83,6 +83,13 @@ Decided 2026-10-31: use Uptime Kuma for monitoring and email alerts; our own `/s
 - [x] YouTube / YouTube Music playlist links in sc2bp (`sc2bp/youtube.py`, `sources.py`, `errors.py`, title cleanup in `parse.py`, optional cookies file for private playlists, tool retitled "playlist to beatport").
   Handoff (2026-11-13, branch `feat/sc2bp-youtube`): pytest 194 and `npm run check` green (run in throwaway containers; the host has no pytest or npm). Not yet done: a real job on the server after deploy (public "Top 100 Songs Global" playlist) and a look at the tool at 360 and 390 px (label changes only, but never viewed). Private playlists untested until the owner adds a cookies file (README).
 
+## Phase 3g: Liked-music sync (plan in DECISIONS.md, 2026-11-13)
+Keep YouTube Music "Liked music" synced to Beatport playlists grouped by genre (families, at most 100 per playlist, `Liked - <Group> #n`), nightly and on a button, never removing anything. Same `sc2bp` service, separate tool. Three PRs:
+- [x] 1 Foundations: Beatport `genre`/`subGenre` on candidates, `my_playlists`, `playlist_tracks`, `tracks_by_ids`; retry helper extracted to `resilience.py`.
+  Handoff (2026-11-13, branch `feat/sync-foundations`): pytest 221 green. Found that Beatport's add answer and availability flags are unreliable (see README), so the sync must verify by re-reading playlists.
+- [ ] 2 Engine, API, scheduler, health: `syncer.py`, `/api/sc2bp/sync/*`, state in `/data/sync/`, import of the finished conversion job `6aad4181`, Kuma monitor `sync`.
+- [ ] 3 Tool UI `tools/sync` (home, inbox, groups, settings, history), shared review pieces moved to `src/features/tools/beatport-review.ts`.
+
 ## Phase 3d: Server hardening (netcup server, found by a read-only check on 2026-10-31)
 Superseded by Phase 3f (2026-11-01): do not pick tasks from this list; it stays as the record of the findings. Task 1 to 3 are now 3f Phase 2; 4, 5 and 7 are 3f Phase 3; 6 is 3f Phase 0.
 Needs the owner: the AI has no sudo password. Do the SSH step with a second session left open until the new login is confirmed, so a mistake cannot lock the owner out. Findings first, then one task each:

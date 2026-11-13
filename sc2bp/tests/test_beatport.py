@@ -19,6 +19,7 @@ class FakeBeatport:
         self.refused_tokens = 0  # how many API calls get a 401 before one is accepted
         self.available = True
         self.tokens_issued = 0
+        self.pages: dict[str, list[dict]] = {}  # GET path -> the pages (each a full answer body) to serve in order
 
     def paths(self):
         return [f"{r.method} {r.url.path}" for r in self.requests]
@@ -68,6 +69,12 @@ class FakeBeatport:
                     ]
                 },
             )
+        if request.method == "GET" and path in self.pages:
+            number = int(request.url.params.get("page", "1"))
+            pages = self.pages[path]
+            body = dict(pages[min(number, len(pages)) - 1])
+            body["next"] = f"{path}?page={number + 1}" if number < len(pages) else None
+            return httpx.Response(200, json=body)
         if path == "/v4/my/playlists/":
             return httpx.Response(201, json={"id": 99, "name": "x"})
         if path.endswith("/tracks/bulk/"):
@@ -144,8 +151,16 @@ def test_httpx_request_logging_is_quiet_so_codes_stay_out_of_the_log():
 def test_search_maps_tracks_to_candidates(world):
     _, _, make, _ = world
     assert make().search("x") == [
-        {"id": 7, "title": "Higher State", "mix": "Original Mix", "artists": ["Solomun"], "durationSec": 400},
-        {"id": 8, "title": "No Length", "mix": "", "artists": [], "durationSec": None},
+        {
+            "id": 7,
+            "title": "Higher State",
+            "mix": "Original Mix",
+            "artists": ["Solomun"],
+            "durationSec": 400,
+            "genre": None,
+            "subGenre": None,
+        },
+        {"id": 8, "title": "No Length", "mix": "", "artists": [], "durationSec": None, "genre": None, "subGenre": None},
     ]
 
 
@@ -288,3 +303,80 @@ def test_a_refused_login_is_fatal_and_a_lost_connection_is_retryable(world, tmp_
     with pytest.raises(BeatportError) as caught:
         bp.search("x")
     assert caught.value.retryable and not caught.value.fatal
+
+
+# --- genre, playlists and their contents (the sync) ------------------------------------------------------------
+
+TECHNO = {"id": 90, "name": "Techno (Peak Time / Driving)", "slug": "techno-peak-time-driving"}
+
+
+def test_a_candidate_carries_the_genre_and_sub_genre_names_only():
+    track = {"id": 1, "name": "x", "genre": TECHNO, "sub_genre": {"id": 3, "name": "Tech Trance"}}
+    got = candidate(track)
+    assert (got["genre"], got["subGenre"]) == ("Techno (Peak Time / Driving)", "Tech Trance")
+    assert candidate({"id": 1, "genre": "junk", "sub_genre": {"name": ""}})["genre"] is None
+    assert "available" not in got  # the catalogue flag does not predict what a playlist accepts
+
+
+def test_my_playlists_follows_every_page_and_skips_rows_without_an_id(world):
+    fake, _, make, _ = world
+    fake.pages["/v4/my/playlists/"] = [
+        {"results": [{"id": 1, "name": "Liked - Techno #1", "track_count": 100}, {"name": "no id"}]},
+        {"results": [{"id": 2, "name": "Other", "track_count": None}]},
+    ]
+    assert make().my_playlists() == [
+        {"id": 1, "name": "Liked - Techno #1", "count": 100, "url": "https://www.beatport.com/library/playlists/1"},
+        {"id": 2, "name": "Other", "count": 0, "url": "https://www.beatport.com/library/playlists/2"},
+    ]
+    asked = [r.url.params["page"] for r in fake.requests if r.url.path == "/v4/my/playlists/"]
+    assert asked == ["1", "2"]
+
+
+def test_playlist_tracks_are_what_is_really_in_it_with_tombstones_marked(world):
+    fake, _, make, _ = world
+    fake.pages["/v4/my/playlists/5/tracks/"] = [
+        {"results": [{"id": 1, "position": 0, "tombstoned": False, "track": {"id": 10, "name": "A", "genre": TECHNO}}]},
+        {"results": [{"id": 2, "position": 1, "tombstoned": True, "track": {"id": 11, "name": "B"}}, {"id": 3}]},
+    ]
+    tracks = make().playlist_tracks(5)
+    assert [(t["id"], t["tombstoned"], t["genre"]) for t in tracks] == [
+        (10, False, "Techno (Peak Time / Driving)"),
+        (11, True, None),
+    ]
+
+
+def test_a_list_that_never_ends_is_an_error_not_a_hang(world, monkeypatch):
+    import beatport
+
+    fake, _, make, _ = world
+    monkeypatch.setattr(beatport, "MAX_PAGES", 3)
+
+    fake.pages["/v4/my/playlists/"] = [{"results": []}] * 50
+    with pytest.raises(BeatportError, match="more pages"):
+        make().my_playlists()
+
+
+def test_tracks_by_ids_asks_in_batches_and_leaves_out_unknown_ids(world):
+    fake, _, make, _ = world
+    fake.pages["/v4/catalog/tracks/"] = [{"results": [{"id": 1, "name": "A", "genre": TECHNO}]}]
+    got = make().tracks_by_ids(list(range(1, 121)))  # 120 ids: three requests of at most 50
+    calls = [r for r in fake.requests if r.url.path == "/v4/catalog/tracks/"]
+    assert [len(c.url.params["id"].split(",")) for c in calls] == [50, 50, 20]
+    assert [t["id"] for t in got] == [1, 1, 1]  # the fake answers the same row each time; unknown ids just return nothing
+    assert make().tracks_by_ids([]) == []
+
+
+def test_a_failing_page_raises_the_usual_error_with_its_class(world):
+    fake, _, make, _ = world
+    fake.pages["/v4/my/playlists/"] = [{"results": []}]
+    original = fake.handler
+
+    def broken(request):
+        if request.url.path == "/v4/my/playlists/":
+            return httpx.Response(503)
+        return original(request)
+
+    beatport = Beatport("me", "pw", world[3], transport=httpx.MockTransport(broken), sleep=lambda s: None)
+    with pytest.raises(BeatportError) as caught:
+        beatport.my_playlists()
+    assert caught.value.retryable

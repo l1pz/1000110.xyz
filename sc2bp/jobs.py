@@ -22,6 +22,7 @@ from beatport import BeatportError
 from errors import BadUrl, PlaylistError
 from match import match_track
 from parse import label, parse_track, search_query
+from resilience import BACKOFF_SECS, retrying  # noqa: F401  (BACKOFF_SECS stays importable from here)
 from sources import SOURCES, source_of
 
 log = logging.getLogger("sc2bp.jobs")
@@ -33,7 +34,6 @@ READ_BATCH = 10
 SAVE_EVERY = 5  # a save after this many searches, or after SAVE_SECS, whichever comes first:
 SAVE_SECS = 2  # a crash costs a couple of searches at most
 ADD_BATCH = 50
-BACKOFF_SECS = (5, 15, 45, 120, 300)
 TRACK_FAILURES_BEFORE_PAUSE = 3
 KEEP_CANDIDATES = 5
 ID_PATTERN = re.compile(r"[0-9a-f]{8}")
@@ -455,15 +455,7 @@ class Runner:
 
     def _retry(self, job: dict, call, what: str):
         """`call()`, tried again after a growing wait while the error says it is worth it."""
-        for attempt in range(len(BACKOFF_SECS) + 1):
-            try:
-                return call()
-            except (BeatportError, PlaylistError) as error:
-                if not error.retryable or attempt == len(BACKOFF_SECS):
-                    raise
-                delay = max(BACKOFF_SECS[attempt], getattr(error, "retry_after", None) or 0)
-                log.info("job %s: %s failed (%s), trying again in %ss", job["id"], what, error, delay)
-                self._wait(job, delay, f"{what}: {error}")
+        return retrying(call, lambda seconds, reason: self._wait(job, seconds, reason), what, f"job {job['id']}")
 
     def _run(self, job: dict) -> None:
         self._list(job)

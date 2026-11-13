@@ -397,6 +397,7 @@ class Syncer:
                 "cancelRequested": False,
                 "confirmed": False,
                 "preview": None,
+                "progress": None,  # {done, total} inside the current phase, for the page's bar
             }
             self._state["runs"].append(run)
             del self._state["runs"][:-MAX_RUNS_KEPT]
@@ -470,6 +471,11 @@ class Syncer:
                         }
                     )
             last = self._state["runs"][-1] if self._state["runs"] else None
+            listed = {genre for g in self._config["groups"] for genre in g["genres"]}
+            unlisted: dict[str, int] = {}
+            for v in videos:  # genres no group lists: they land in the catch-all until the owner puts them in a group
+                if v.get("genre") and v["genre"] not in listed:
+                    unlisted[v["genre"]] = unlisted.get(v["genre"], 0) + 1
             return {
                 "config": self.config(),
                 "health": self.health(),
@@ -488,6 +494,7 @@ class Syncer:
                     "needYou": count(lambda v: v["status"] == "review") + len(gone),
                 },
                 "groups": groups,
+                "otherGenres": dict(sorted(unlisted.items(), key=lambda kv: (-kv[1], kv[0]))),
                 "lastSuccess": self._state["lastSuccess"],
                 "nextAuto": self._next_auto(),
                 "confirmedOnce": self._state["confirmedOnce"],
@@ -817,6 +824,7 @@ class Syncer:
     def _phase(self, run: dict, phase: str) -> None:
         with self._lock:
             run["phase"] = phase
+            run["progress"] = None
             run["updated"] = self._clock()
             self._save_state()
 
@@ -843,7 +851,7 @@ class Syncer:
     # --- a run ------------------------------------------------------------------------------------------------
 
     def _run(self, run: dict) -> None:
-        ctx = {"members": {}}
+        ctx = {"members": {}, "filed": 0}
         run["counts"] = {"newLikes": 0, "searched": 0, "matched": 0, "added": 0, "unavailable": 0, "dismissed": 0, **(run.get("counts") or {})}
         self._phase(run, "youtube")
         self._read_youtube(run)
@@ -1021,6 +1029,7 @@ class Syncer:
         for n, vid in enumerate(todo, 1):
             self._check(run)
             with self._lock:
+                run["progress"] = {"done": n - 1, "total": len(todo)}
                 v = self._state["videos"][vid]
                 parsed = self._parsed(v)
             query = search_query(parsed)
@@ -1120,6 +1129,9 @@ class Syncer:
             pending = self._pending()
         if not pending:
             return
+        ctx["total"] = len(pending)
+        with self._lock:
+            run["progress"] = {"done": 0, "total": ctx["total"]}
         by_group: dict[str, list[str]] = {}
         for vid, v in pending:
             by_group.setdefault(self._group_of(v), []).append(vid)
@@ -1178,6 +1190,8 @@ class Syncer:
                 after = {t["id"]: t for t in self._retry(run, lambda p=pid: bp.playlist_tracks(p), "checking the Beatport playlist")}
             ctx["members"][pid] = after
             with self._lock:
+                ctx["filed"] += sum(len(by_pick[bid]) for bid in ids)
+                run["progress"] = {"done": ctx["filed"], "total": ctx["total"]}
                 entry["count"] = sum(1 for t in after.values() if not t.get("tombstoned"))
                 for bid in ids:
                     for vid in by_pick[bid]:

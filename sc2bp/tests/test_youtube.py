@@ -166,3 +166,10 @@ def test_an_empty_or_huge_playlist_is_refused(data_dir):
     many = {"entries": [{"url": f"https://www.youtube.com/watch?v={i}", "title": "t"} for i in range(youtube.MAX_TRACKS + 1)]}
     with pytest.raises(PlaylistError, match="more than"):
         list_playlist(LIST, run=Runner(many))
+
+
+def test_a_caller_may_raise_the_track_limit(data_dir):
+    many = {"entries": [{"url": f"https://www.youtube.com/watch?v={i}", "title": "t"} for i in range(youtube.MAX_TRACKS + 5)]}
+    assert len(list_playlist(LIST, run=Runner(many), max_tracks=youtube.MAX_TRACKS + 10)["urls"]) == youtube.MAX_TRACKS + 5
+    with pytest.raises(PlaylistError, match="more than 10 tracks"):
+        list_playlist(LIST, run=Runner(many), max_tracks=10)

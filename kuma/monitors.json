@@ -20,6 +20,11 @@
       "group": "services"
     },
     {
+      "name": "sync",
+      "url": "http://sc2bp:8000/api/sc2bp/sync/health",
+      "group": "services"
+    },
+    {
       "name": "pocket-id",
       "url": "https://id.1000110.xyz/healthz",
       "group": "services"

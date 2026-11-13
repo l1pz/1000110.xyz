@@ -105,7 +105,7 @@ def explain_failure(stderr: str) -> PlaylistError:
     return PlaylistError("yt-dlp could not read that playlist (private, deleted, or YouTube changed)")
 
 
-def list_playlist(url: str, run=subprocess.run) -> dict:
+def list_playlist(url: str, run=subprocess.run, max_tracks: int = MAX_TRACKS) -> dict:
     command = ["yt-dlp", "--flat-playlist", "-J", "--no-warnings", "--no-cache-dir"]
     cookies = cookies_path()
     if cookies.is_file():
@@ -124,8 +124,8 @@ def list_playlist(url: str, run=subprocess.run) -> dict:
     listing = parse_listing(data, url)
     if not listing["urls"]:
         raise PlaylistError("that link has no tracks")
-    if len(listing["urls"]) > MAX_TRACKS:
-        raise PlaylistError(f"that playlist has more than {MAX_TRACKS} tracks")
+    if len(listing["urls"]) > max_tracks:
+        raise PlaylistError(f"that playlist has more than {max_tracks} tracks")
     return listing
 
 

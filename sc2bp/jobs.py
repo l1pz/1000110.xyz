@@ -27,6 +27,7 @@ from sources import SOURCES, source_of
 log = logging.getLogger("sc2bp.jobs")
 
 MAX_TRACKS = 2000
+MAX_SPLIT = 2000  # tracks per Beatport playlist; 0 means no split
 MAX_ACTIVE = 20  # queued, running or paused jobs
 READ_BATCH = 10
 SAVE_EVERY = 5  # a save after this many searches, or after SAVE_SECS, whichever comes first:
@@ -58,6 +59,7 @@ def new_track(url: str, source: str = "soundcloud") -> dict:
         "url": url,
         "source": source,
         "uploaderIsArtist": False,  # YouTube Music `Name - Topic` uploads: the channel is the artist
+        "list": None,  # the number of the Beatport playlist this track goes to (see `Runner._assign`)
         "state": "new",  # new -> read | blank -> read | unreadable; read -> matched | error
         "title": "",
         "uploader": "",
@@ -114,6 +116,13 @@ class Runner:
             except (OSError, ValueError, KeyError, TypeError):
                 log.warning("skipping unreadable job file %s", path.name)
                 continue
+            if "playlists" not in job:  # saved before playlists could be split: one playlist holds every added track
+                old = job.pop("playlist", None)
+                job["playlists"] = [{"id": old["id"], "url": old["url"], "name": old["name"]}] if old else []
+                job.setdefault("split", 0)
+                for track in job["tracks"]:
+                    if track.get("added") and track.get("list") is None:
+                        track["list"] = 0
             if job["state"] == "running":  # the server stopped mid-run: carry on from the saved progress
                 job["state"] = "queued"
             job["waiting"] = None
@@ -141,8 +150,11 @@ class Runner:
 
     # --- requests (called from the routes) --------------------------------------------------------------------
 
-    def submit(self, url: str, name: str = "") -> tuple[dict, bool]:
-        """A new job, or the job already working on that link. Returns `(summary, created)`."""
+    def submit(self, url: str, name: str = "", split: int = 0) -> tuple[dict, bool]:
+        """A new job, or the job already working on that link. Returns `(summary, created)`.
+        `split` is the most tracks per Beatport playlist (`Name #1`, `Name #2`, ...); 0 keeps one playlist."""
+        if not isinstance(split, int) or isinstance(split, bool) or not 0 <= split <= MAX_SPLIT:
+            raise JobError(f"tracks per playlist must be 0 (no split) to {MAX_SPLIT}")
         source = source_of(url)
         url = self._sources[source].check_url(url)
         with self._lock:
@@ -161,7 +173,8 @@ class Runner:
                 "state": "queued",
                 "phase": "listing",
                 "tracks": [],
-                "playlist": None,
+                "split": split,
+                "playlists": [],  # {id, url, name}, in order; track["list"] is the index a track went to
                 "error": None,
                 "waiting": None,
                 "cancelRequested": False,
@@ -318,6 +331,10 @@ class Runner:
         picked_ids = {t["picked"] for t in tracks if t["picked"] is not None}
         added_ids = {t["picked"] for t in tracks if t["picked"] is not None and t["added"]}
         phase = job["phase"]
+        playlists = [
+            {**p, "count": len({t["picked"] for t in tracks if t.get("list") == i and t["added"]})}
+            for i, p in enumerate(job.get("playlists", []))
+        ]
         progress = {
             "listing": (0, 0),
             "reading": (count(lambda t: t["state"] not in ("new", "blank")), len(tracks)),
@@ -352,7 +369,9 @@ class Runner:
             "pendingPicks": count(lambda t: t["picked"] is not None and not t["added"]),
             "waiting": job["waiting"],
             "error": job["error"],
-            "playlist": job["playlist"],
+            "split": job.get("split", 0),
+            "playlists": playlists,
+            "playlist": playlists[0] if playlists else None,
         }
 
     # --- the worker -------------------------------------------------------------------------------------------
@@ -554,29 +573,69 @@ class Runner:
 
     def _create(self, job: dict) -> None:
         with self._lock:
-            pending = [t for t in job["tracks"] if t["picked"] is not None and not t["added"]]
-        if not pending:
-            return
+            if not any(t["picked"] is not None and not t["added"] for t in job["tracks"]):
+                return
         self._phase(job, "creating")
         self._check(job)
-        with self._lock:
-            playlist = job["playlist"]
-        if playlist is None:
-            name = job["name"] or ("YouTube playlist" if job.get("source") == "youtube" else "SoundCloud playlist")
+        wanted = self._assign(job)
+        split = int(job.get("split") or 0)
+        base = job["name"] or ("YouTube playlist" if job.get("source") == "youtube" else "SoundCloud playlist")
+        for n in range(len(job["playlists"]), max(wanted, default=-1) + 1):
+            name = f"{base} #{n + 1}" if split else base
             made = self._retry(job, lambda: self._beatport().create_playlist(name), "creating the playlist")
             with self._lock:  # saved at once: a restart must never make a second playlist
-                job["playlist"] = playlist = {"id": made["id"], "url": made["url"], "name": name}
+                job["playlists"].append({"id": made["id"], "url": made["url"], "name": name})
                 self._save(job)
-        ids = list(dict.fromkeys(t["picked"] for t in pending))  # one Beatport track picked twice is added once
-        for batch in chunks(ids, ADD_BATCH):
-            self._check(job)
-            took = set(self._retry(job, lambda: self._beatport().add_tracks(playlist["id"], batch), "adding tracks"))
+        for n in wanted:
             with self._lock:
-                for track in job["tracks"]:
-                    if track["picked"] in batch and not track["added"]:
-                        if track["picked"] in took:
-                            track["added"] = True
-                        else:
-                            track["picked"] = None
-                            track["error"] = "Beatport would not add this track to the playlist"
-                self._save(job)
+                playlist = job["playlists"][n]
+                ids = list(
+                    dict.fromkeys(  # one Beatport track picked twice is added once
+                        t["picked"] for t in job["tracks"] if t["picked"] is not None and not t["added"] and t.get("list") == n
+                    )
+                )
+            for batch in chunks(ids, ADD_BATCH):
+                self._check(job)
+                took = set(
+                    self._retry(job, lambda: self._beatport().add_tracks(playlist["id"], batch), "adding tracks")
+                )
+                with self._lock:
+                    for track in job["tracks"]:
+                        if track["picked"] in batch and not track["added"] and track.get("list") == n:
+                            if track["picked"] in took:
+                                track["added"] = True
+                            else:
+                                track["picked"] = None
+                                track["list"] = None
+                                track["error"] = "Beatport would not add this track to the playlist"
+                    self._save(job)
+
+    def _assign(self, job: dict) -> list[int]:
+        """Decides which playlist each picked track goes to, and saves that before anything is added, so a restart
+        adds the same tracks to the same playlists. Tracks keep their order in the source playlist; a track picked
+        later goes to the first playlist with room. One Beatport track in two source tracks lives in one playlist, and
+        one already added is not added again. Returns the playlist numbers that have something to add."""
+        with self._lock:
+            split = int(job.get("split") or 0)
+            placed: dict[int, int] = {}  # Beatport track id -> playlist number
+            members: dict[int, set[int]] = {}
+            for t in job["tracks"]:
+                if t["picked"] is not None and t.get("list") is not None:
+                    placed[t["picked"]] = t["list"]
+                    members.setdefault(t["list"], set()).add(t["picked"])
+            in_playlist = {t["picked"] for t in job["tracks"] if t["picked"] is not None and t["added"]}
+            for t in job["tracks"]:
+                if t["picked"] is None or t["added"]:
+                    continue
+                if t["picked"] in in_playlist:
+                    t["added"] = True
+                    continue
+                if t["picked"] not in placed:
+                    n = 0
+                    while split and len(members.get(n, ())) >= split:
+                        n += 1
+                    placed[t["picked"]] = n
+                    members.setdefault(n, set()).add(t["picked"])
+                t["list"] = placed[t["picked"]]
+            self._save(job)
+            return sorted({t["list"] for t in job["tracks"] if t["picked"] is not None and not t["added"]})

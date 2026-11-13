@@ -60,6 +60,16 @@ def test_a_youtube_video_link_gets_a_400_with_the_reason(world):
     assert r.status_code == 400 and "list=" in r.json()["detail"]
 
 
+def test_the_split_size_is_accepted_stored_and_validated(world):
+    ok = world.client.post("/api/sc2bp/jobs", json={"url": PLAYLIST, "split": 100})
+    assert ok.status_code == 200 and ok.json()["job"]["split"] == 100
+    for bad in (-1, 2001, "many"):
+        r = world.client.post("/api/sc2bp/jobs", json={"url": PLAYLIST + "x", "split": bad})
+        assert r.status_code == 422
+    plain = world.client.post("/api/sc2bp/jobs", json={"url": PLAYLIST + "y"})
+    assert plain.json()["job"]["split"] == 0  # a client that sends nothing still gets one playlist
+
+
 def test_the_job_list_and_one_job_show_progress_and_the_result(world):
     job_id = start(world, name="Friday")
     world.runner.process_next()

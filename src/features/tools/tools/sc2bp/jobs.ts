@@ -226,8 +226,9 @@ export interface ResultModel {
 /** The summary of a finished job: how many are in the playlist and why the others are not. */
 export function resultModel(job: Job): ResultModel {
     const { added, none, maybe, error, unreadable } = job.counts;
-    const headline =
-        added > 0 ? `${added} of ${job.total} tracks are in your Beatport playlist` : "nothing was added to Beatport";
+    const lists = job.playlists.length;
+    const where = lists > 1 ? `${lists} Beatport playlists` : "your Beatport playlist";
+    const headline = added > 0 ? `${added} of ${job.total} tracks are in ${where}` : "nothing was added to Beatport";
     const lines = [
         [none, "not found on Beatport"],
         [maybe, "found, but not sure"],

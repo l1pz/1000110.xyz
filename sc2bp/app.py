@@ -26,6 +26,7 @@ DATA_DIR = Path(os.environ.get("SC2BP_DATA", "/data"))
 class JobIn(BaseModel):
     url: str = Field(max_length=300)
     name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)] = ""
+    split: int = Field(0, ge=0, le=2000)  # most tracks per Beatport playlist; 0 means one playlist
 
 
 class PickIn(BaseModel):
@@ -81,7 +82,7 @@ def me() -> dict:
 def start(body: JobIn, runner: Runner = Depends(get_runner)) -> dict:
     """Starts a conversion; a link that is already being converted gives that job back (`created: false`)."""
     try:
-        job, created = runner.submit(body.url, body.name)
+        job, created = runner.submit(body.url, body.name, body.split)
     except BadUrl as error:
         raise HTTPException(400, str(error)) from None
     except JobError as error:

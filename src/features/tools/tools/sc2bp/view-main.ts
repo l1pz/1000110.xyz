@@ -1,5 +1,5 @@
 import { button, buttonRow, lineInput, linkButton, statusLine, toolState } from "../../ui";
-import { type Job, NetworkError } from "./api";
+import { type Job, MAX_SPLIT, NetworkError } from "./api";
 import { type Ctx, describe, h, jobLink, link, startPolling, tone } from "./dom";
 import { pollDelay, rowModel, sortJobs, tabTitle } from "./jobs";
 
@@ -10,6 +10,9 @@ export function mainView(ctx: Ctx): void {
     const url = lineInput("playlist url (soundcloud or youtube)", "https://soundcloud.com/user/sets/name");
     state.bindText("u", url.input);
     const name = lineInput("beatport playlist name (optional)", "the same as the source playlist");
+    const split = lineInput(`tracks per beatport playlist (0 = one playlist, up to ${MAX_SPLIT})`, "100");
+    split.input.value = "100";
+    split.input.inputMode = "numeric";
     const form = statusLine();
     const startBtn = button("start conversion", () => void begin());
     const heading = h("p", "dim", "jobs/");
@@ -20,10 +23,13 @@ export function mainView(ctx: Ctx): void {
     async function begin(): Promise<void> {
         const playlist = url.input.value.trim();
         if (!playlist) return form.set("paste a soundcloud or youtube playlist link first", true);
+        const perList = split.input.value.trim() === "" ? 0 : Number(split.input.value.trim());
+        if (!Number.isInteger(perList) || perList < 0 || perList > MAX_SPLIT)
+            return form.set(`tracks per playlist must be a whole number from 0 to ${MAX_SPLIT}`, true);
         startBtn.disabled = true;
         form.set("starting...");
         try {
-            const { job, created } = await api.start(playlist, name.input.value.trim(), signal);
+            const { job, created } = await api.start(playlist, name.input.value.trim(), perList, signal);
             form.set(created ? "" : "that playlist is already being converted");
             location.hash = jobLink(job.id);
         } catch (error) {
@@ -61,5 +67,14 @@ export function mainView(ctx: Ctx): void {
         }
     }, signal);
 
-    root.append(url.wrap, name.wrap, buttonRow(startBtn, linkButton(state)), form.node, heading, list, note.node);
+    root.append(
+        url.wrap,
+        name.wrap,
+        split.wrap,
+        buttonRow(startBtn, linkButton(state)),
+        form.node,
+        heading,
+        list,
+        note.node,
+    );
 }

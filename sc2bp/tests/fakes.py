@@ -125,6 +125,7 @@ class FakeBeatport:
         self.search_hook = None  # called with the number of this search; may raise
         self.add_hook = None
         self.created: list[str] = []
+        self.playlists: dict[int, list[int]] = {}  # playlist id -> track ids in it
         self.add_calls: list[list[int]] = []
         self.added: list[int] = []
         self.unavailable: set[int] = set()
@@ -137,14 +138,18 @@ class FakeBeatport:
 
     def create_playlist(self, name):
         self.created.append(name)
-        return {"id": 77, "url": "https://www.beatport.com/library/playlists/77"}
+        pid = 76 + len(self.created)  # the first is 77
+        self.playlists[pid] = []
+        return {"id": pid, "url": f"https://www.beatport.com/library/playlists/{pid}"}
 
     def add_tracks(self, playlist_id, ids):
         self.add_calls.append(list(ids))
+        self.playlists.setdefault(playlist_id, [])
         if self.add_hook:
             self.add_hook(len(self.add_calls))
         took = [i for i in ids if i not in self.unavailable]
         self.added.extend(took)
+        self.playlists[playlist_id].extend(took)
         return took
 
 

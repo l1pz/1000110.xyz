@@ -40,7 +40,13 @@ def test_a_job_lists_reads_matches_and_creates_the_playlist(world):
     assert job["needsReview"] == 4  # the two maybes and the two nones; the unreadable one is not a match problem
     assert world.bp.created == ["My set"]
     assert world.bp.added == [1000, 1001, 1005]
-    assert job["playlist"] == {"id": 77, "url": "https://www.beatport.com/library/playlists/77", "name": "My set"}
+    assert job["playlist"] == {
+        "id": 77,
+        "url": "https://www.beatport.com/library/playlists/77",
+        "name": "My set",
+        "count": 3,
+    }
+    assert job["playlists"] == [job["playlist"]]
 
 
 def test_the_name_given_wins_over_soundclouds(world):
@@ -563,3 +569,129 @@ def test_jobs_saved_before_youtube_existed_still_load_as_soundcloud(world):
     assert again.tracks(done["id"], "all")["total"] == len(SCENARIO)
     again.process_next()
     assert again.get(queued["id"])["state"] == "done"
+
+
+# --- splitting the Beatport playlist ---------------------------------------------------------------------------
+
+
+def many(n):
+    return [("match", f"Artist{i} - Song{i}") for i in range(n)]
+
+
+def test_a_split_job_makes_numbered_playlists_of_at_most_that_many_tracks(tmp_path):
+    w = World(tmp_path, many(250))
+    job, _ = w.runner.submit(PLAYLIST, split=100)
+    w.runner.process_next()
+    job = w.runner.get(job["id"])
+    assert w.bp.created == ["My set #1", "My set #2", "My set #3"]
+    assert [p["count"] for p in job["playlists"]] == [100, 100, 50]
+    assert [len(w.bp.playlists[p["id"]]) for p in job["playlists"]] == [100, 100, 50]
+    assert job["counts"]["added"] == 250 and job["split"] == 100
+    assert job["playlist"] == job["playlists"][0]
+
+
+def test_tracks_keep_their_order_across_the_playlists(tmp_path):
+    w = World(tmp_path, many(5))
+    job, _ = w.runner.submit(PLAYLIST, split=2)
+    w.runner.process_next()
+    ids = [w.bp.playlists[p["id"]] for p in w.runner.get(job["id"])["playlists"]]
+    assert ids == [[1000, 1001], [1002, 1003], [1004]]
+
+
+def test_a_given_name_is_numbered_too(tmp_path):
+    w = World(tmp_path, many(3))
+    w.runner.submit(PLAYLIST, "Liked music", split=2)
+    w.runner.process_next()
+    assert w.bp.created == ["Liked music #1", "Liked music #2"]
+
+
+def test_a_split_job_with_few_tracks_still_gets_number_one(world):
+    world.runner.submit(PLAYLIST, split=100)
+    world.runner.process_next()
+    assert world.bp.created == ["My set #1"]
+
+
+def test_split_zero_keeps_one_plain_playlist(tmp_path):
+    w = World(tmp_path, many(150))
+    job, _ = w.runner.submit(PLAYLIST, split=0)
+    w.runner.process_next()
+    assert w.bp.created == ["My set"] and w.runner.get(job["id"])["playlists"][0]["count"] == 150
+
+
+@pytest.mark.parametrize("split", [-1, 2001, True, "100", None])
+def test_a_bad_split_is_refused(world, split):
+    with pytest.raises(JobError, match="tracks per playlist"):
+        world.runner.submit(PLAYLIST, split=split)
+
+
+def test_a_crash_between_playlists_resumes_with_the_same_assignment(tmp_path, monkeypatch):
+    monkeypatch.setattr(jobs, "ADD_BATCH", 1)
+    w = World(tmp_path, many(5))
+
+    def die(n):
+        if n == 3:  # the first playlist has its two tracks, the second has one of two
+            raise Crash
+
+    w.bp.add_hook = die
+    w.runner.submit(PLAYLIST, split=2)
+    with pytest.raises(Crash):
+        w.runner.process_next()
+    assert w.bp.created == ["My set #1", "My set #2", "My set #3"]  # all made before any track went in
+    w.bp.add_hook = None
+    restarted = w.start()
+    restarted.process_next()
+    job = restarted.get(restarted.list_jobs()[0]["id"])
+    assert w.bp.created == ["My set #1", "My set #2", "My set #3"]  # still three
+    assert [w.bp.playlists[p["id"]] for p in job["playlists"]] == [[1000, 1001], [1002, 1003], [1004]]
+
+
+def test_a_later_pick_goes_to_the_first_playlist_with_room_then_a_new_one(world):
+    job, _ = world.runner.submit(PLAYLIST, split=2)
+    world.runner.process_next()
+    job = world.runner.get(job["id"])
+    assert [p["count"] for p in job["playlists"]] == [2, 1]  # 1000, 1001 | 1005
+    world.runner.pick(job["id"], 2, 1002)
+    world.runner.pick(job["id"], 6, 1006)
+    world.runner.apply(job["id"])
+    world.runner.process_next()
+    job = world.runner.get(job["id"])
+    assert [p["count"] for p in job["playlists"]] == [2, 2, 1]
+    assert world.bp.created[-1] == "My set #3"
+    assert 1002 in world.bp.playlists[job["playlists"][1]["id"]]
+
+
+def test_a_track_beatport_refuses_is_flagged_and_does_not_take_a_place(tmp_path):
+    w = World(tmp_path, many(4))
+    w.bp.unavailable = {1001}
+    job, _ = w.runner.submit(PLAYLIST, split=2)
+    w.runner.process_next()
+    job = w.runner.get(job["id"])
+    assert job["state"] == "done" and job["counts"]["added"] == 3
+    refused = [t for t in w.runner.tracks(job["id"], "all", limit=10)["tracks"] if t["error"]]
+    assert [(t["index"], t["picked"]) for t in refused] == [(1, None)]
+    assert sum(p["count"] for p in job["playlists"]) == 3
+
+
+def test_one_beatport_track_picked_twice_lives_in_one_playlist_once(tmp_path):
+    # two source tracks with the same title find the same Beatport track
+    w = World(tmp_path, [("match", "Artist0 - Song0"), ("match", "Artist0 - Song0"), ("match", "Artist2 - Song2")])
+    job, _ = w.runner.submit(PLAYLIST, split=100)
+    w.runner.process_next()
+    job = w.runner.get(job["id"])
+    both = [t["picked"] for t in w.runner.tracks(job["id"], "all", limit=10)["tracks"]]
+    assert both[0] == both[1] and both[0] != both[2]
+    assert w.bp.added.count(both[0]) == 1 and job["counts"]["added"] == 3
+    assert job["playlists"][0]["count"] == 2  # distinct Beatport tracks, not source tracks
+
+
+def test_jobs_saved_with_one_playlist_still_load_and_keep_it(world):
+    job = world.run()
+    path = world.dir / "jobs" / f"{job['id']}.json"
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    saved["playlist"] = saved.pop("playlists")[0]
+    del saved["split"]
+    for t in saved["tracks"]:
+        del t["list"]
+    path.write_text(json.dumps(saved), encoding="utf-8")
+    again = world.start().get(job["id"])
+    assert again["split"] == 0 and len(again["playlists"]) == 1 and again["playlists"][0]["count"] == 3

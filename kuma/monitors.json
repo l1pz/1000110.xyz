@@ -20,11 +20,6 @@
       "group": "services"
     },
     {
-      "name": "ruminant",
-      "url": "http://ruminant:8000/api/ruminant/health",
-      "group": "services"
-    },
-    {
       "name": "pocket-id",
       "url": "https://id.1000110.xyz/healthz",
       "group": "services"

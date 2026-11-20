@@ -92,6 +92,10 @@ Keep YouTube Music "Liked music" synced to Beatport playlists grouped by genre (
 - [x] 3 Tool UI `tools/sync` (home, inbox, groups, settings, history); the shared pieces went to `src/features/tools/backend.ts` and `backend-dom.ts` instead of `beatport-review.ts` (the inbox rows are the sync's own).
   Handoff (2026-11-13, branch `feat/sync-ui`): `npm run check` 445 tests, pytest green; looked at in headless Chromium at 360 and 390 px against the fake API (all screens and the main clicks, no console errors, no horizontal scroll). The run now reports `progress`, the status lists `otherGenres`. Open: `sc2bp/index.ts` still has its own copy of the login guard that `loginGuard` now holds; switch it over once the tool has been seen in a real browser with the real server.
 
+## Phase 3h: Anna's Archive API for KOReader (2026-11-21, owner request)
+- [x] `annas-archive/` stack: upstream `annas-archive-api` built from a pinned commit, public `https://annas.1000110.xyz`, UI behind `tinyauth`, `/api` behind `annas-gate` (Traefik forwardAuth; only the SHA-256 of the owner's key in `.env`, never the key), manifest entry (no `auto` yet), docs.
+  Handoff (2026-11-21, branch `feat/annasarchive`): `npm run check` green (456 tests, includes `annas-archive/gate.test.mjs`), `python stacks/lint.py` and `python -m pytest stacks` green. Owner steps left: DNS `annas` → VPS IP, DNS only; `/opt/stacks/annas-archive/.env` with `ANNAS_KEY_SHA256`; allowlist the stack (installer `--allow`); dispatch the deploy; patch the plugin's `apiUrl` for https (folder README); then flip `"auto": true` in a small PR.
+
 ## Phase 3d: Server hardening (netcup server, found by a read-only check on 2026-10-31)
 Superseded by Phase 3f (2026-11-01): do not pick tasks from this list; it stays as the record of the findings. Task 1 to 3 are now 3f Phase 2; 4, 5 and 7 are 3f Phase 3; 6 is 3f Phase 0.
 Needs the owner: the AI has no sudo password. Do the SSH step with a second session left open until the new login is confirmed, so a mistake cannot lock the owner out. Findings first, then one task each:

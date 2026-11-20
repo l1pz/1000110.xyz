@@ -1,0 +1,70 @@
+services:
+  annas-archive-api:
+    build:
+      context: .
+      args:
+        UPSTREAM_SHA: a6edc549985713a422efd0e19f2c093c417ed70c
+    image: annas-archive-api:local
+    container_name: annas-archive-api
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 384m
+    cpus: 1
+    environment:
+      PORT: "3000"
+      ANNAS_BASE_URL: https://annas-archive.gd
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks: [proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.annas.loadbalancer.server.port=3000
+      # The browser UI (upstream public/index.html), owner only like the other admin pages.
+      - traefik.http.routers.annas-ui.rule=Host(`annas.1000110.xyz`)
+      - traefik.http.routers.annas-ui.entrypoints=websecure
+      - traefik.http.routers.annas-ui.tls.certresolver=cloudflare
+      - traefik.http.routers.annas-ui.priority=10
+      - traefik.http.routers.annas-ui.middlewares=tinyauth
+      - traefik.http.routers.annas-ui.service=annas
+      # The KOReader plugin: no login possible, so the only credential is the Anna's Archive key,
+      # checked by annas-gate before the request reaches the API (see README.md).
+      - traefik.http.routers.annas-api.rule=Host(`annas.1000110.xyz`) && PathPrefix(`/api`)
+      - traefik.http.routers.annas-api.entrypoints=websecure
+      - traefik.http.routers.annas-api.tls.certresolver=cloudflare
+      - traefik.http.routers.annas-api.priority=100
+      - traefik.http.routers.annas-api.middlewares=annas-key
+      - traefik.http.routers.annas-api.service=annas
+      - traefik.http.middlewares.annas-key.forwardauth.address=http://annas-gate:8080/check
+
+  # forwardAuth gate: 200 only for `Authorization: Bearer <the owner's key>`. It compares the
+  # SHA-256 of the token, so the plaintext key never reaches the server (see README.md).
+  annas-gate:
+    image: annas-archive-api:local
+    container_name: annas-gate
+    restart: unless-stopped
+    command: ["node", "/app/gate.mjs"]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+    cpus: 0.5
+    env_file: .env
+    environment:
+      PORT: "8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks: [proxy]
+
+networks:
+  proxy:
+    external: true

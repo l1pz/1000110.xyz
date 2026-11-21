@@ -9,7 +9,7 @@ Two things run in this stack, on one host, `books.1000110.xyz`:
    still key-gated. It is the same container as before, only the host moved.
 
 `annas.1000110.xyz` now redirects here (301), so old bookmarks and the e-reader's settings keep
-working.
+working. The Kindle half lives in `koplugin/annas-sync.koplugin/` (see below).
 
 ```
 Phone (Safari)                        Kindle + KOReader
@@ -68,6 +68,43 @@ Device endpoints, `Authorization: Bearer <SYNC_TOKEN>` (or `?token=`):
 | `GET /opds` | OPDS 1.2 catalogue, the fallback with no plugin |
 
 `GET /health` is public: queue counts and whether a clearance cookie exists.
+
+## KOReader plugin
+
+`koplugin/annas-sync.koplugin/` is the other half: KOReader asks `/sync` for finished books,
+downloads each one into the Kindle's books folder, and acknowledges it. No cable, no OPDS.
+
+Install (once, over USB):
+
+1. Copy `annas-sync.koplugin` into `koreader/plugins/` on the Kindle, so that
+   `koreader/plugins/annas-sync.koplugin/main.lua` exists.
+2. Restart KOReader (or enable it in Tools -> Plugin management).
+3. Search -> "Könyvek (Anna's Archive)", then set:
+   - **Szerver**: `https://books.1000110.xyz`
+   - **Eszköztoken**: the `SYNC_TOKEN` from the server's `.env`
+   - **Mappa**: `/mnt/us/books` (the default)
+4. "Szinkronizálás most" runs a sync by hand. With automatic sync on (the default) it also runs
+   when Wi-Fi connects and a few seconds after a wake-up. A finished batch shows a notification;
+   the files appear in the file browser (open the folder again if it is already on screen).
+
+Behaviour worth knowing:
+
+- Files are written as `<name>.part` and renamed only when complete, so an interrupted download
+  never leaves half a book.
+- A book is acknowledged only after the file is on disk. If the file is already there (a lost ack,
+  a re-flash), the plugin just acknowledges again and does not download twice.
+- Filenames are made FAT32-safe on the device (invalid characters become `_`, paths are stripped),
+  because uploads keep the name the phone sent.
+- A manual sync may turn Wi-Fi on; an automatic one never does, and does nothing while offline.
+- The automatic attempt is throttled to once a minute: FileManager and ReaderUI each hold an
+  instance and `NetworkConnected` can fire more than once.
+
+OPDS is still the no-plugin fallback: add `https://books.1000110.xyz/opds?token=<SYNC_TOKEN>` as a
+catalogue in KOReader.
+
+The plugin is tested in two ways: `web/tests/test_koplugin.py` pins the metadata, the three routes
+and `luac -p` syntax; the sync itself was run against the real app with KOReader stubbed (Lua 5.5
+through Lupa), covering download, ack, idempotence and the 401 path.
 
 ## The owner's API
 

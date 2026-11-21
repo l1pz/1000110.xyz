@@ -43,6 +43,7 @@ jobs:
           python-version: "3.13"
           cache: pip
           cache-dependency-path: annas-archive/web/requirements-dev.txt
+      - run: sudo apt-get update && sudo apt-get install -y lua5.1
       - run: pip install -r annas-archive/web/requirements-dev.txt
       - run: python -m pytest -q
         working-directory: annas-archive/web

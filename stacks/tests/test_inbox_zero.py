@@ -34,6 +34,7 @@ def test_no_service_publishes_ports(inbox_zero):
 def test_web_has_healthcheck_and_traefik_labels(inbox_zero):
     web = inbox_zero["services"]["web"]
     assert web.get("healthcheck")
+    assert web["environment"]["HOSTNAME"] == "0.0.0.0"
     labels = web.get("labels", [])
     assert any("Host(`mail.1000110.xyz`)" in label for label in labels)
     assert "traefik.docker.network=proxy" in labels

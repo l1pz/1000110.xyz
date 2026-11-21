@@ -109,6 +109,7 @@ end
 function AnnaSync:addToMainMenu(menu_items)
     menu_items.annassync = {
         text = _("Könyvek (Anna's Archive)"),
+        sorting_hint = "more_tools",
         sub_item_table = {
             {
                 text = _("Szinkronizálás most"),

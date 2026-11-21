@@ -79,7 +79,7 @@ Install (once, over USB):
 1. Copy `annas-sync.koplugin` into `koreader/plugins/` on the Kindle, so that
    `koreader/plugins/annas-sync.koplugin/main.lua` exists.
 2. Restart KOReader (or enable it in Tools -> Plugin management).
-3. Search -> "Könyvek (Anna's Archive)", then set:
+3. Tools -> More tools -> "Könyvek (Anna's Archive)", then set:
    - **Szerver**: `https://books.1000110.xyz`
    - **Eszköztoken**: the `SYNC_TOKEN` from the server's `.env`
    - **Mappa**: `/mnt/us/books` (the default)

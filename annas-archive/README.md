@@ -1,15 +1,16 @@
 # Books: Anna's Archive for the family Kindle
 
-Two things run in this stack, on one host, `books.1000110.xyz`:
+Two things run here, on one host, `books.1000110.xyz`:
 
 1. **The books site** (`annas-web`): a small Hungarian web app on a phone. Search, one tap to add,
    and the book lands on the Kindle by itself. Login is Pocket ID (Face ID); the e-reader uses a
    device token instead, because KOReader cannot do OIDC.
-2. **The raw API** (`annas-archive-api` + `annas-gate`): the owner's JSON API on `/api`, unchanged,
-   still key-gated. It is the same container as before, only the host moved.
+2. **The KOReader plugin** (`koplugin/annas-sync.koplugin/`): the Kindle side of the same contract.
 
-`annas.1000110.xyz` now redirects here (301), so old bookmarks and the e-reader's settings keep
-working. The Kindle half lives in `koplugin/annas-sync.koplugin/` (see below).
+The site talks to Anna's Archive and Libgen itself, so there is no second service: one container,
+one compose file.
+
+`annas.1000110.xyz` redirects here (301), so old bookmarks keep working.
 
 ```
 Phone (Safari)                        Kindle + KOReader
@@ -106,12 +107,6 @@ The plugin is tested in two ways: `web/tests/test_koplugin.py` pins the metadata
 and `luac -p` syntax; the sync itself was run against the real app with KOReader stubbed (Lua 5.5
 through Lupa), covering download, ack, idempotence and the 401 path.
 
-## The owner's API
-
-`/api` is still `annas-archive-api` behind `annas-gate`: a Traefik forwardAuth that compares the
-SHA-256 of `Authorization: Bearer <key>` with `ANNAS_KEY_SHA256`. It never sees the plaintext key and
-does not depend on the books app. The KOReader API host is now `books.1000110.xyz`.
-
 ## Server setup (owner, once)
 
 1. DNS: `books` and `annas` A records -> the VPS IP, **DNS only** (grey cloud). Certificates come
@@ -120,8 +115,6 @@ does not depend on the books app. The KOReader API host is now `books.1000110.xy
 
    ```sh
    sudo tee /opt/stacks/annas-archive/.env >/dev/null <<'EOF'
-   ANNAS_KEY=<your Anna's Archive key>
-   ANNAS_KEY_SHA256=<64 hex characters: sha256 of the key>
    OIDC_ISSUER=https://id.1000110.xyz
    OIDC_CLIENT_ID=<Pocket ID client "Books">
    OIDC_CLIENT_SECRET=<the client's secret>
@@ -143,17 +136,15 @@ does not depend on the books app. The KOReader API host is now `books.1000110.xy
 
 ## Logs and data
 
-- `docker logs annas-web` (worker + clearance), `docker logs annas-archive-api`, `docker logs annas-gate`.
+- `docker logs annas-web` (worker + clearance).
 - Queue and cookies: the `books-data` volume (`/data/books.db`), files in `/data/files`.
 - The clearance can be re-minted by hand:
   `docker exec annas-web python -c "from app import harvest; from app.store import Store; from app.config import load; print(harvest.mint(load().annas_base, Store(load().db_path).set_cookies))"`
 
-## Updating upstream
+## Updating the parsers
 
-The API service builds `bitesized/annas-archive-api` from a pinned commit (`UPSTREAM_SHA` in
-`compose.yaml`); bump it deliberately. The books app parses Anna's Archive and Libgen HTML directly;
-if one of them changes, the tests in `web/tests/` say which parser broke. Refresh the fixtures with
-real pages when that happens.
+The books app parses Anna's Archive and Libgen HTML directly; if one of them changes, the tests in
+`web/tests/` say which parser broke. Refresh the fixtures with real pages when that happens.
 
 ## Notes
 

@@ -68,8 +68,6 @@
       "target": "/opt/stacks/annas-archive",
       "include": [
         "compose.yaml",
-        "Dockerfile",
-        "gate.mjs",
         ".env.example",
         "README.md",
         "web/Dockerfile",

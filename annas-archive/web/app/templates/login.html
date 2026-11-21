@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}belépés{% endblock %}
+{% block footer %}csak a családnak{% endblock %}
+{% block body %}
+<section class="box">
+    <h1 class="cmd">$ login</h1>
+    {% if error %}<p class="err">{{ error }}</p>{% endif %}
+    <p>Be kell lépni, hogy lássam a könyveket.</p>
+    {% if auth_enabled %}
+        <p><a class="button" href="/auth/login">Belépés Pocket ID-vel</a></p>
+    {% else %}
+        <p class="dim">A belépés nincs beállítva ezen a szerveren.</p>
+    {% endif %}
+</section>
+{% endblock %}

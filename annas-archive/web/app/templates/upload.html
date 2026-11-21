@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}feltöltés{% endblock %}
+{% block body %}
+<section class="box">
+    <h1 class="cmd">$ feltölt</h1>
+    {% if error %}<p class="err">{{ error }}</p>{% endif %}
+    <p>Ha a könyv már megvan a telefonon, itt adhatod hozzá. A Kindle magától elviszi.</p>
+    <form class="upload" method="post" action="/upload" enctype="multipart/form-data">
+        <label for="file">fájl (epub, azw3, mobi, pdf)</label>
+        <input id="file" type="file" name="file" accept=".epub,.azw3,.mobi,.pdf,.fb2,.txt,.doc,.docx" required>
+        <button type="submit">feltöltés</button>
+    </form>
+    <p class="dim">iPhone-on: Fájlok → Tallózás, vagy a könyv „Megosztás” menüjéből mentsd a Fájlok közé.</p>
+</section>
+{% endblock %}

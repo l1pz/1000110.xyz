@@ -1,0 +1,302 @@
+/* Könyvek. Gruvbox Dark, the same nine variables as the main site (DESIGN.md 2b); a separate host,
+   so the CSS is not shared. Phone first: 360 px is the width to check. */
+
+:root {
+    --bg: #282828;
+    --fg: #ebdbb2;
+    --aqua: #8ec07c;
+    --green: #b8bb26;
+    --yellow: #fabd2f;
+    --purple: #d3869b;
+    --red: #fb4934;
+    --gray: #928374;
+    --bg-soft: #3c3836;
+
+    --font: "DejaVu Sans Mono", ui-monospace, monospace;
+    --gap: 12px;
+    --tap: 44px;
+    color-scheme: dark;
+    accent-color: var(--yellow);
+    caret-color: var(--yellow);
+}
+
+* {
+    box-sizing: border-box;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gray) var(--bg);
+}
+
+::selection {
+    background: var(--yellow);
+    color: var(--bg);
+}
+
+html {
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.45;
+    background: var(--bg);
+    color: var(--fg);
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0 auto;
+    max-width: 46rem;
+    padding: 0 var(--gap) env(safe-area-inset-bottom, var(--gap));
+}
+
+/* -- frame ------------------------------------------------------------- */
+
+.bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--gap);
+    padding: var(--gap) 0;
+    border-bottom: 1px solid var(--bg-soft);
+    font-size: 0.9rem;
+    min-height: var(--tap);
+}
+
+.bar:last-child {
+    border-bottom: 0;
+    border-top: 1px solid var(--bg-soft);
+}
+
+.brand {
+    color: var(--yellow);
+    text-decoration: none;
+    font-weight: bold;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: var(--gap);
+}
+
+nav a,
+.link {
+    color: var(--aqua);
+    text-decoration: none;
+    padding: 0.4rem 0;
+}
+
+nav a:hover,
+.link:hover {
+    color: var(--yellow);
+}
+
+main {
+    padding: var(--gap) 0;
+}
+
+.box {
+    border: 1px solid var(--bg-soft);
+    padding: var(--gap);
+    margin-bottom: var(--gap);
+}
+
+h1,
+h2 {
+    font-size: 1rem;
+    margin: 0 0 0.5rem;
+}
+
+.cmd {
+    color: var(--yellow);
+    font-weight: bold;
+}
+
+h2 {
+    overflow-wrap: anywhere;
+}
+
+.dim {
+    color: var(--gray);
+}
+
+.err {
+    color: var(--red);
+}
+
+/* -- forms ------------------------------------------------------------- */
+
+.search {
+    display: flex;
+    gap: var(--gap);
+    margin: 0.75rem 0;
+}
+
+input[type="search"],
+input[type="file"],
+button,
+.button {
+    font: inherit;
+    min-height: var(--tap);
+    border: 1px solid var(--bg-soft);
+    border-radius: 0;
+    background: var(--bg-soft);
+    color: var(--fg);
+    padding: 0.5rem 0.75rem;
+}
+
+input[type="search"] {
+    flex: 1 1 auto;
+    min-width: 0;
+    background: var(--bg);
+}
+
+input[type="search"]:focus,
+input[type="file"]:focus,
+button:focus-visible,
+.button:focus-visible {
+    outline: 2px solid var(--yellow);
+    outline-offset: -2px;
+}
+
+button,
+.button {
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bg);
+    background: var(--yellow);
+    border-color: var(--yellow);
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+button:hover,
+.button:hover {
+    background: var(--green);
+    border-color: var(--green);
+}
+
+button.link {
+    background: none;
+    border: 0;
+    color: var(--gray);
+    padding: 0.4rem 0;
+    min-height: 0;
+    font-weight: normal;
+}
+
+button.link:hover {
+    color: var(--red);
+    background: none;
+}
+
+.inline {
+    display: inline;
+}
+
+.upload {
+    display: grid;
+    gap: var(--gap);
+    margin-top: var(--gap);
+}
+
+.upload input[type="file"] {
+    background: var(--bg);
+}
+
+/* -- lists ------------------------------------------------------------- */
+
+ul.plain {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+ul.plain li {
+    padding: 0.35rem 0;
+    border-bottom: 1px dashed var(--bg-soft);
+    overflow-wrap: anywhere;
+}
+
+ul.plain li:last-child {
+    border-bottom: 0;
+}
+
+ul.plain a {
+    color: var(--fg);
+    text-decoration: none;
+}
+
+ul.plain a:hover {
+    color: var(--yellow);
+}
+
+/* -- results ----------------------------------------------------------- */
+
+.book {
+    border: 1px solid var(--bg-soft);
+    border-left: 3px solid var(--gray);
+    padding: var(--gap);
+    margin-bottom: var(--gap);
+}
+
+.book h2 {
+    margin: 0.15rem 0 0.35rem;
+}
+
+.book .who {
+    margin: 0 0 0.75rem;
+    color: var(--purple);
+    overflow-wrap: anywhere;
+}
+
+.book .tag {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--gray);
+    text-transform: lowercase;
+}
+
+.book .fmt,
+.book .state {
+    color: var(--green);
+    font-weight: bold;
+}
+
+.book form {
+    margin: 0;
+}
+
+.book .actions {
+    display: flex;
+    align-items: center;
+    gap: var(--gap);
+    flex-wrap: wrap;
+}
+
+/* status colours on the queue */
+.st-downloading {
+    border-left-color: var(--yellow);
+}
+
+.st-ready {
+    border-left-color: var(--green);
+}
+
+.st-sent {
+    border-left-color: var(--aqua);
+}
+
+.st-failed {
+    border-left-color: var(--red);
+}
+
+.st-failed .state {
+    color: var(--red);
+}
+
+@media (min-width: 40rem) {
+    html {
+        font-size: 17px;
+    }
+}

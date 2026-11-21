@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="hu">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#282828">
+    <meta name="robots" content="noindex">
+    <title>{% block title %}könyvek{% endblock %} · könyvek</title>
+    <link rel="stylesheet" href="/static/style.css">
+    {% block head %}{% endblock %}
+</head>
+<body>
+<header class="bar">
+    <a class="brand" href="/">~/könyvek</a>
+    <nav>
+        <a href="/queue">sor</a>
+        <a href="/upload">feltöltés</a>
+        {% if user %}
+            <form method="post" action="/auth/logout" class="inline">
+                <button class="link" type="submit">kilépés</button>
+            </form>
+        {% endif %}
+    </nav>
+</header>
+<main>
+    {% block body %}{% endblock %}
+</main>
+<footer class="bar">
+    <span class="dim">{% block footer %}a Kindle magától elviszi, ha wi-fi van{% endblock %}</span>
+</footer>
+</body>
+</html>

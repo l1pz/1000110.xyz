@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}sor{% endblock %}
+{% block head %}{% if busy %}<meta http-equiv="refresh" content="5">{% endif %}{% endblock %}
+{% block footer %}{% if busy %}frissül, amíg dolgozom…{% else %}kész{% endif %}{% endblock %}
+{% block body %}
+<section class="box">
+    <h1 class="cmd">$ ps</h1>
+    {% if not books %}
+        <p class="dim">Üres a sor. <a href="/">Keress egy könyvet.</a></p>
+    {% endif %}
+</section>
+
+{% for book in books %}
+<article class="book st-{{ book.status }}">
+    <p class="tag">
+        <span class="state">{{ status_text.get(book.status, book.status) }}</span>
+        {% if book.format %}· {{ book.format }}{% endif %}
+        {% if book.size_text %}· {{ book.size_text }}{% endif %}
+    </p>
+    <h2>{{ book.title }}</h2>
+    {% if book.author %}<p class="who">{{ book.author }}</p>{% endif %}
+    {% if book.error %}<p class="err">{{ book.error }}</p>{% endif %}
+    <div class="actions">
+        {% if book.status in ("ready", "sent") and book.file_path %}
+            <a class="button" href="/files/{{ book.id }}">letöltés a telefonra</a>
+        {% endif %}
+        {% if book.status in ("failed", "sent") %}
+            <form method="post" action="/queue/{{ book.id }}/delete" class="inline">
+                <button class="link" type="submit">törlés</button>
+            </form>
+        {% endif %}
+    </div>
+</article>
+{% endfor %}
+{% endblock %}

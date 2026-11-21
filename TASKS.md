@@ -96,6 +96,15 @@ Keep YouTube Music "Liked music" synced to Beatport playlists grouped by genre (
 - [x] `annas-archive/` stack: upstream `annas-archive-api` built from a pinned commit, public `https://annas.1000110.xyz`, UI behind `tinyauth`, `/api` behind `annas-gate` (Traefik forwardAuth; only the SHA-256 of the owner's key in `.env`, never the key), manifest entry (no `auto` yet), docs.
   Handoff (2026-11-21, branch `feat/annasarchive`): `npm run check` green (456 tests, includes `annas-archive/gate.test.mjs`), `python stacks/lint.py` and `python -m pytest stacks` green. Owner steps left: DNS `annas` → VPS IP, DNS only; `/opt/stacks/annas-archive/.env` with `ANNAS_KEY_SHA256`; allowlist the stack (installer `--allow`); dispatch the deploy; patch the plugin's `apiUrl` for https (folder README); then flip `"auto": true` in a small PR.
 
+## Phase 3i: Books site for the family Kindle (2026-11-21, owner request)
+- [x] `annas-archive/web/`: FastAPI books service on `books.1000110.xyz` (Hungarian UI, English routes): Pocket ID login, SQLite queue + one worker, Anna's Archive first with Libgen fallback, `/sync` + `/opds` for the e-reader, `/upload` for a file already on the phone. The owner's `/api` moved to the same host behind the unchanged key gate; `annas.` redirects.
+- [x] DDoS-Guard clearance: a headless Chromium baked into the image mints `aa_ddg_check` only when a request is challenged. The User-Agent is the whole trick (`HeadlessChrome` loops forever); no other spoofing was needed. Cookies and the sliding 20-minute ones are kept in SQLite.
+- [x] Tests: 48 pytest cases against real saved pages (`web/tests/fixtures/`), CI job `books`, `python stacks/lint.py` green.
+- [ ] Deploy, then confirm the VPS (datacenter IP) passes the challenge; if it does not, Libgen still carries the site.
+- [ ] `annas-sync.koplugin`: on `NetworkConnected`, GET `/sync`, download to `/mnt/us/books`, POST `/sync/ack/{id}`; Hungarian menu, manual "frissítés" item.
+- [ ] Look at it on the wife's iPhone (360/390 px) and once on the Paperwhite.
+  Handoff (2026-11-21, branch `feat/books`): spike result first, then the app. Clearing DDoS-Guard needs no browser for normal requests, but the 90-day token can only be minted by running their JS, so the app ships Chromium and calls it on a 403. The free download has a ~41 s countdown per file; the worker absorbs it. Owner steps: `.env` (OIDC + `SESSION_SECRET` + `SYNC_TOKEN`), Pocket ID redirect URI `https://books.1000110.xyz/auth/callback`, allowlist, deploy.
+
 ## Phase 3d: Server hardening (netcup server, found by a read-only check on 2026-10-31)
 Superseded by Phase 3f (2026-11-01): do not pick tasks from this list; it stays as the record of the findings. Task 1 to 3 are now 3f Phase 2; 4, 5 and 7 are 3f Phase 3; 6 is 3f Phase 0.
 Needs the owner: the AI has no sudo password. Do the SSH step with a second session left open until the new login is confirmed, so a mistake cannot lock the owner out. Findings first, then one task each:
@@ -315,3 +324,7 @@ Needs a short plan shown in the terminal before any code. Storage is decided: op
 - Next: merge, then run one real job after the auto-deploy; add a cookies file only if the owner wants private playlists.
 - 2026-11-13 (branch `feat/sc2bp-2000-tracks`): sc2bp track limit raised from 1000 to 2000 (owner's Liked music has 1521); see DECISIONS.md.
 - 2026-11-13 (branch `feat/sc2bp-split-playlists`): sc2bp splits the Beatport result into numbered playlists of at most N tracks (form default 100, 0 = one); see DECISIONS.md. pytest 210, `npm run check` green. Not yet tried against real Beatport.
+
+### Session 25 (2026-11-21)
+- Done (branch `feat/books`): measured the DDoS-Guard challenge on Anna's Archive: a cookieless GET is always 403, but a headless Chromium with a normal Chrome UA passes in ~12 s and mints `aa_ddg_check` (90 days, bound to `__ddg5_` and the client IP). Plain `httpx` with those cookies then searches (50/page), reads `/md5` metadata and fetches the slow-download partner file; the partner is a Libgen mirror underneath. Built `annas-archive/web/` (FastAPI, OIDC, SQLite queue, worker, Hungarian UI), moved `/api` to `books.1000110.xyz`, added the CI job and tests.
+- Not done: deploy and the VPS check; the KOReader plugin; real-phone look. Hammering the challenge for a few minutes turns it into a 502 for a while, so the app mints at most once per 10 minutes and answers from Libgen meanwhile.

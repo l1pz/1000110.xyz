@@ -71,7 +71,17 @@
         "Dockerfile",
         "gate.mjs",
         ".env.example",
-        "README.md"
+        "README.md",
+        "web/Dockerfile",
+        "web/requirements.txt",
+        "web/requirements-dev.txt",
+        "web/conftest.py",
+        "web/app/*.py",
+        "web/app/sources/*.py",
+        "web/app/templates/*.html",
+        "web/app/static/*",
+        "web/tests/*.py",
+        "web/tests/fixtures/*.html"
       ]
     }
   }

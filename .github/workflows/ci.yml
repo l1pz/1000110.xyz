@@ -34,6 +34,19 @@ jobs:
       - run: python -m pytest -q
         working-directory: sc2bp
 
+  books:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: annas-archive/web/requirements-dev.txt
+      - run: pip install -r annas-archive/web/requirements-dev.txt
+      - run: python -m pytest -q
+        working-directory: annas-archive/web
+
   stacks:
     runs-on: ubuntu-latest
     steps:
@@ -51,7 +64,7 @@ jobs:
         working-directory: kuma
 
   deploy:
-    needs: [check, sc2bp, stacks]
+    needs: [check, sc2bp, books, stacks]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     concurrency: deploy
@@ -77,7 +90,7 @@ jobs:
   # Which stacks does this push deploy? stacks/changed.py decides (tested): `auto` stacks with a copied file changed,
   # or the stack named in a manual run. Pull requests never get here, so the secrets never reach them.
   stacks-changed:
-    needs: [check, sc2bp, stacks]
+    needs: [check, sc2bp, books, stacks]
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     outputs:

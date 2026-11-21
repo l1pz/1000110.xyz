@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ q or "keresés" }}{% endblock %}
+{% block body %}
+<section class="box">
+    <h1 class="cmd">$ keres {{ q }}</h1>
+    <form class="search" method="get" action="/search" role="search">
+        <input type="search" name="q" value="{{ q }}" autocomplete="off" autocapitalize="off"
+               spellcheck="false" placeholder="író vagy cím">
+        <button type="submit">keres</button>
+    </form>
+    {% if error %}<p class="err">{{ error }}</p>{% endif %}
+    {% if q and not error %}
+        <p class="dim">{{ results|length }} találat · EPUB, AZW3, MOBI, PDF sorrendben</p>
+    {% endif %}
+</section>
+
+{% for result in results %}
+<article class="book">
+    <p class="tag">
+        <span class="fmt">{{ result.format or "?" }}</span>
+        {% if result.size_text %}· {{ result.size_text }}{% endif %}
+        {% if result.year %}· {{ result.year }}{% endif %}
+        <span class="dim">· {{ "Anna" if result.source == "annas" else "Libgen" }}</span>
+    </p>
+    <h2>{{ result.title }}</h2>
+    {% if result.author %}<p class="who">{{ result.author }}</p>{% endif %}
+    <form method="post" action="/add">
+        <input type="hidden" name="title" value="{{ result.title }}">
+        <input type="hidden" name="author" value="{{ result.author }}">
+        <input type="hidden" name="year" value="{{ result.year or '' }}">
+        <input type="hidden" name="format" value="{{ result.format }}">
+        <input type="hidden" name="size" value="{{ result.size or 0 }}">
+        <input type="hidden" name="md5" value="{{ result.md5 }}">
+        <input type="hidden" name="source" value="{{ result.source }}">
+        <button type="submit">+ a sorba</button>
+    </form>
+</article>
+{% else %}
+    {% if q and not error %}<p class="dim">Nincs találat. Próbáld rövidebben, vagy csak az író nevét.</p>{% endif %}
+{% endfor %}
+{% endblock %}

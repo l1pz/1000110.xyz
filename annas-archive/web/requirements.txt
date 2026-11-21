@@ -1,0 +1,10 @@
+fastapi==0.115.*
+uvicorn==0.32.*
+jinja2==3.1.*
+httpx==0.28.*
+beautifulsoup4==4.12.*
+authlib==1.4.*
+itsdangerous==2.2.*
+python-multipart==0.0.*
+# Only used to mint the DDoS-Guard clearance cookie, once every ~90 days (see app/harvest.py).
+playwright==1.49.*

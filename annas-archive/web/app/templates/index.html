@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}keresés{% endblock %}
+{% block body %}
+<section class="box">
+    <h1 class="cmd">$ keres</h1>
+    <form class="search" method="get" action="/search" role="search">
+        <input type="search" name="q" value="" placeholder="író vagy cím, pl. Egri csillagok"
+               autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+        <button type="submit">keres</button>
+    </form>
+    <p class="dim">Csak magyar könyvek, EPUB elsőként.</p>
+</section>
+
+{% if recent %}
+<section class="box">
+    <h2 class="cmd">$ ls sor</h2>
+    <ul class="plain">
+        {% for book in recent %}
+            <li>
+                <a href="/queue">{{ book.title }}</a>
+                <span class="dim">· {{ status_text.get(book.status, book.status) }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+{% endblock %}

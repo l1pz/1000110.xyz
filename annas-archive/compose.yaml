@@ -25,16 +25,9 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.services.annas.loadbalancer.server.port=3000
-      # The browser UI (upstream public/index.html), owner only like the other admin pages.
-      - traefik.http.routers.annas-ui.rule=Host(`annas.1000110.xyz`)
-      - traefik.http.routers.annas-ui.entrypoints=websecure
-      - traefik.http.routers.annas-ui.tls.certresolver=cloudflare
-      - traefik.http.routers.annas-ui.priority=10
-      - traefik.http.routers.annas-ui.middlewares=tinyauth
-      - traefik.http.routers.annas-ui.service=annas
-      # The KOReader plugin: no login possible, so the only credential is the Anna's Archive key,
-      # checked by annas-gate before the request reaches the API (see README.md).
-      - traefik.http.routers.annas-api.rule=Host(`annas.1000110.xyz`) && PathPrefix(`/api`)
+      # The owner's raw API, now on the books host, still behind the key gate. It is the only route
+      # that prefix, and it wins over the site router by priority.
+      - traefik.http.routers.annas-api.rule=Host(`books.1000110.xyz`) && PathPrefix(`/api`)
       - traefik.http.routers.annas-api.entrypoints=websecure
       - traefik.http.routers.annas-api.tls.certresolver=cloudflare
       - traefik.http.routers.annas-api.priority=100
@@ -64,6 +57,56 @@ services:
       retries: 3
       start_period: 5s
     networks: [proxy]
+
+  # The family site: Hungarian UI, Pocket ID login, its own queue and worker. `/api` above stays the
+  # owner's. The worker mints a DDoS-Guard clearance cookie with the bundled Chromium when needed,
+  # so the image is large but idle.
+  annas-web:
+    build:
+      context: ./web
+    image: annas-books:local
+    container_name: annas-web
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    shm_size: 256m
+    security_opt: [no-new-privileges:true]
+    mem_limit: 1g
+    cpus: 1
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+      PUBLIC_URL: https://books.1000110.xyz
+      ANNAS_BASE_URL: https://annas-archive.gd
+    volumes:
+      - books-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks: [proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.books.loadbalancer.server.port=8000
+      - traefik.http.routers.books.rule=Host(`books.1000110.xyz`)
+      - traefik.http.routers.books.entrypoints=websecure
+      - traefik.http.routers.books.tls.certresolver=cloudflare
+      - traefik.http.routers.books.priority=10
+      - traefik.http.routers.books.service=books
+      # The old host keeps working as a redirect, so bookmarks and the e-reader do not break.
+      - traefik.http.routers.annas-redirect.rule=Host(`annas.1000110.xyz`)
+      - traefik.http.routers.annas-redirect.entrypoints=websecure
+      - traefik.http.routers.annas-redirect.tls.certresolver=cloudflare
+      - traefik.http.routers.annas-redirect.middlewares=annas-to-books
+      - traefik.http.routers.annas-redirect.service=books
+      - traefik.http.middlewares.annas-to-books.redirectregex.regex=^https://annas\.1000110\.xyz/(.*)
+      - traefik.http.middlewares.annas-to-books.redirectregex.replacement=https://books.1000110.xyz/$1
+      - traefik.http.middlewares.annas-to-books.redirectregex.permanent=true
+
+volumes:
+  books-data:
 
 networks:
   proxy:

@@ -1,133 +1,124 @@
-# Anna's Archive API (KOReader)
+# Books: Anna's Archive for the family Kindle
 
-[bitesized/annas-archive-api](https://github.com/bitesized/annas-archive-api) scrapes Anna's Archive
-search results into JSON and proxies authenticated fast downloads, so the
-[KOReader plugin](https://github.com/bitesized/annasarchive.koplugin) can search and download books
-straight onto the e-reader. This stack runs it on `https://annas.1000110.xyz`.
+Two things run in this stack, on one host, `books.1000110.xyz`:
+
+1. **The books site** (`annas-web`): a small Hungarian web app on a phone. Search, one tap to add,
+   and the book lands on the Kindle by itself. Login is Pocket ID (Face ID); the e-reader uses a
+   device token instead, because KOReader cannot do OIDC.
+2. **The raw API** (`annas-archive-api` + `annas-gate`): the owner's JSON API on `/api`, unchanged,
+   still key-gated. It is the same container as before, only the host moved.
+
+`annas.1000110.xyz` now redirects here (301), so old bookmarks and the e-reader's settings keep
+working.
 
 ```
-Kobo (KOReader + annas-archive plugin)
-  │  https://annas.1000110.xyz/api/search, /api/download
-  │  Authorization: Bearer <your Anna's Archive key>
-  ▼
-Traefik ──► annas-gate (forwardAuth): 200 only if sha256(key) == ANNAS_KEY_SHA256
-  │
-  ▼
-annas-archive-api ──HTTPS──► annas-archive.gd (or the tld the plugin sends)
+Phone (Safari)                        Kindle + KOReader
+  books.1000110.xyz                     /sync, /opds  (device token)
+  Pocket ID login (Face ID)                   |
+        |                                     v
+        v                              annas-sync.koplugin
+  annas-web  ------------------------------> /mnt/us/books
+    |  SQLite queue + worker
+    |  1. annas-archive.gd   (search, metadata, slow download)
+    |  2. libgen.li          (fallback, needs no cookie)
+    v
+  /data/files/<id>.<ext>   (kept until the reader acks, max 7 days)
 ```
 
-## Security model
+## Why two sources
 
-- **TLS only**, on a subdomain of the site. The plugin itself knows nothing about TLS
-  (upstream hardcodes `http://host:port/api`), so its `apiUrl` needs a three-line patch, below.
-  Never point it at a plain HTTP port: the header carries the key that also logs in to Anna's Archive.
-- **The plaintext key never reaches the server.** Requests carry it; the gate compares a SHA-256
-  (`ANNAS_KEY_SHA256` in `.env`) and Traefik forwards the original request. The key lives only in
-  the e-reader's settings (`settings/annasarchive.lua`), and in a password manager.
-- **Only your key gets through.** Anyone else, with or without a valid Anna's Archive account, gets
-  `401` before the request reaches the API, so this box is not a public scraping relay and does not
-  burn its IP on other people's searches.
-- **The web UI is behind `tinyauth`** like the other admin pages. The API path is not: the plugin
-  cannot log in to Pocket ID.
-- **Upstream is built, not vendored**: the image downloads a pinned commit tarball (that repo has no
-  license file). Bump `UPSTREAM_SHA` in `compose.yaml` deliberately.
-- The one sharp edge the gate cannot cover: the `tld` the plugin sends decides which mirror gets
-  the key. Use a current mirror; retired domains get re-registered by strangers.
+Anna's Archive has the better index (50 results a page, clean title/author/year, original filename)
+and its free "slow download" hands out a direct partner URL. But it sits behind DDoS-Guard: a
+cookieless request gets a 403 challenge, and the clearance cookie (`aa_ddg_check`, valid 90 days)
+can only be minted by running their JavaScript.
+
+So the worker tries Anna's Archive first and Libgen second, where Libgen needs no cookie at all
+(`index.php` -> `ads.php` -> `get.php`). If both fail the book shows "nem sikerült" with a Hungarian
+reason instead of retrying forever.
+
+The clearance is not a proxy: once minted, everything is plain HTTP. `app/harvest.py` launches the
+bundled Chromium only when a request comes back as a challenge (roughly every 90 days, or when the
+VPS IP changes). The one thing that matters is the User-Agent: `HeadlessChrome` in the string makes
+the challenge loop forever; a normal Chrome UA passes in about 15 seconds. Faking plugins, WebGL or
+CPU cores made no difference, so the harvester does not fake them.
+
+A failed mint is not retried for ten minutes: hammering the edge turns a challenge into a 502 for a
+while. Searches never wait for the browser; they answer from Libgen and mint in the background.
+
+## Routes
+
+Browser, behind Pocket ID (`/auth/login`, `/auth/callback`):
+
+| Route | What it does |
+| --- | --- |
+| `GET /` | search box + the last few queue entries |
+| `GET /search?q=` | Hungarian results, EPUB -> AZW3 -> MOBI -> PDF |
+| `POST /add` | queue one result (idempotent per md5) |
+| `GET /queue` | statuses; refreshes itself while work is in flight |
+| `GET /files/{id}` | download the finished file to the phone |
+| `GET /upload`, `POST /upload` | add a file already on the phone (iPhone: Fájlok) |
+
+Device endpoints, `Authorization: Bearer <SYNC_TOKEN>` (or `?token=`):
+
+| Route | What it does |
+| --- | --- |
+| `GET /sync` | JSON list of ready books |
+| `GET /sync/files/{id}` | the file |
+| `POST /sync/ack/{id}` | mark it delivered (the file is then deleted after a week) |
+| `GET /opds` | OPDS 1.2 catalogue, the fallback with no plugin |
+
+`GET /health` is public: queue counts and whether a clearance cookie exists.
+
+## The owner's API
+
+`/api` is still `annas-archive-api` behind `annas-gate`: a Traefik forwardAuth that compares the
+SHA-256 of `Authorization: Bearer <key>` with `ANNAS_KEY_SHA256`. It never sees the plaintext key and
+does not depend on the books app. The KOReader API host is now `books.1000110.xyz`.
 
 ## Server setup (owner, once)
 
-1. DNS: an `A` record for `annas` → the VPS IP, **DNS only** (grey cloud at Cloudflare). The
-   certificate comes from the existing DNS-01 challenge; a proxied record adds a TLS layer and bot
-   checks that the e-reader's HTTP client may not survive.
-2. Create the `.env` (only the hash of the key, never the key):
+1. DNS: `books` and `annas` A records -> the VPS IP, **DNS only** (grey cloud). Certificates come
+   from the existing DNS-01 challenge.
+2. `.env` in `/opt/stacks/annas-archive` (see `.env.example`):
 
    ```sh
-   sudo mkdir -p /opt/stacks/annas-archive
-   python3 -c 'import getpass, hashlib; print(hashlib.sha256(getpass.getpass("key: ").encode()).hexdigest())'
    sudo tee /opt/stacks/annas-archive/.env >/dev/null <<'EOF'
-   ANNAS_KEY_SHA256=<paste the 64 hex characters>
+   ANNAS_KEY=<your Anna's Archive key>
+   ANNAS_KEY_SHA256=<64 hex characters: sha256 of the key>
+   OIDC_ISSUER=https://id.1000110.xyz
+   OIDC_CLIENT_ID=<Pocket ID client "Books">
+   OIDC_CLIENT_SECRET=<the client's secret>
+   SESSION_SECRET=<openssl rand -hex 32>
+   SYNC_TOKEN=<openssl rand -hex 24>
+   ALLOWED_GROUP=books
    EOF
    sudo chmod 600 /opt/stacks/annas-archive/.env
    ```
 
-   `getpass` reads without echoing, so the key stays out of the shell history. Strip spaces: the
-   hash must match the exact string the plugin sends.
+3. Pocket ID: the OIDC client **Books** needs the redirect URI
+   `https://books.1000110.xyz/auth/callback` and the allowed group `books`. Her account goes in
+   `books` only (never `admin`).
+4. Allowlist the stack: `sudo bash deploy/install-stack-deploy.sh --allow annas-archive=/opt/stacks/annas-archive`
+5. Deploy: Actions -> CI -> Run workflow, branch `main`, `stack` = `annas-archive`. The first build
+   pulls Chromium into the web image (~1 GB), so it takes a few minutes.
+6. Check: `curl -s https://books.1000110.xyz/health` (queue counts, `clearance`), then log in once on
+   the phone. The first search mints the clearance if it is missing.
 
-3. Allowlist the stack on the server:
+## Logs and data
 
-   ```sh
-   sudo bash deploy/install-stack-deploy.sh --allow annas-archive=/opt/stacks/annas-archive
-   ```
-
-4. Deploy: Actions → CI → Run workflow, branch `main`, `stack` = `annas-archive`. The log shows the
-   `plan` first; the first run creates the two containers. Once that works, flip `"auto": true` in
-   `stacks/manifest.json` in a small PR so later changes deploy by themselves.
-
-5. Open `https://annas.1000110.xyz` in a browser: `tinyauth` asks you to log in, then the search UI
-   loads (the key goes into its ⚙ Settings panel and stays in that browser's localStorage).
-
-6. Smoke test from any machine (the gate, not an IP allowlist, is what keeps others out):
-
-   ```sh
-   read -rs ANNAS_KEY          # paste the key, Enter; nothing is echoed
-   curl -sS -H "Authorization: Bearer $ANNAS_KEY" \
-     'https://annas.1000110.xyz/api/search?query=clean%20code&limit=3&tld=gd'
-   curl -s -o /dev/null -w '%{http_code}\n' \
-     'https://annas.1000110.xyz/api/search?query=x'   # 401 without the key
-   unset ANNAS_KEY
-   ```
-
-## KOReader setup
-
-1. Install the plugin from its [latest release](https://github.com/bitesized/annasarchive.koplugin/releases/latest)
-   and unpack it as `<koreader>/plugins/annasarchive.koplugin/` (the directory name must end in
-   `.koplugin`; GitHub's "Download ZIP" gives `annasarchive.koplugin-main`, rename it).
-2. Patch `main.lua` so it speaks HTTPS and drops the port when it is 443. Replace
-
-   ```lua
-   function AnnaPlugin:apiUrl()
-       return string.format("http://%s:%s/api", self:apiHost(), self:apiPort())
-   end
-   ```
-
-   with
-
-   ```lua
-   function AnnaPlugin:apiUrl()
-       if self:apiPort() == "443" then
-           return string.format("https://%s/api", self:apiHost())
-       end
-       return string.format("https://%s:%s/api", self:apiHost(), self:apiPort())
-   end
-   ```
-
-   KOReader's bundled LuaSocket/LuaSec handle `https://` URLs (the same path OPDS and Wallabag use).
-3. Restart KOReader, then **Anna's Archive → Settings**:
-
-   | Setting | Value |
-   | --- | --- |
-   | API Host | `annas.1000110.xyz` |
-   | API Port | `443` |
-   | Anna's Archive TLD | a current mirror, e.g. `gd` |
-   | Secret Key | your Anna's Archive account key |
-
-4. Search, download a book, and check it lands in the download directory.
+- `docker logs annas-web` (worker + clearance), `docker logs annas-archive-api`, `docker logs annas-gate`.
+- Queue and cookies: the `books-data` volume (`/data/books.db`), files in `/data/files`.
+- The clearance can be re-minted by hand:
+  `docker exec annas-web python -c "from app import harvest; from app.store import Store; from app.config import load; print(harvest.mint(load().annas_base, Store(load().db_path).set_cookies))"`
 
 ## Updating upstream
 
-1. Read the commits at `github.com/bitesized/annas-archive-api` (security fixes, changed endpoints).
-2. Set the new 40-character commit SHA in `compose.yaml` (`UPSTREAM_SHA`); merge. The image rebuilds on
-   the next deploy.
-3. Run one search and one download from the e-reader. If the scraper breaks, Anna's Archive's HTML
-   changed: pin the previous SHA back, then report or wait upstream.
+The API service builds `bitesized/annas-archive-api` from a pinned commit (`UPSTREAM_SHA` in
+`compose.yaml`); bump it deliberately. The books app parses Anna's Archive and Libgen HTML directly;
+if one of them changes, the tests in `web/tests/` say which parser broke. Refresh the fixtures with
+real pages when that happens.
 
 ## Notes
 
-- No Kuma monitor: the UI is behind `tinyauth`, and reaching the container over the Docker network
-  would mean another shared network (and a deploy-order trap when Kuma starts before this stack).
-  `restart: unless-stopped` and the CI `deploys` monitor cover the common failures; a broken upstream
-  shows up as an error in the plugin.
-- Logs: `docker logs annas-archive-api`, `docker logs annas-gate`. Deploy log:
-  `/var/lib/stack-deploy/deploy.log`.
-- Anna's Archive is a shadow library. This is a personal setup for material you have the right to
-  read; the upstream README has the same caveat.
+- No Kuma monitor: the health endpoint is public, adding one is a one-line change if wanted.
+- Anna's Archive is a shadow library. This is a personal setup for material you have the right to read.

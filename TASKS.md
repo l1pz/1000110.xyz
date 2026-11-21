@@ -108,61 +108,11 @@ Keep YouTube Music "Liked music" synced to Beatport playlists grouped by genre (
 - [ ] Look at it on the wife's iPhone (360/390 px) and once on the Paperwhite.
   Handoff (2026-11-21, branch `feat/books`): spike result first, then the app. Clearing DDoS-Guard needs no browser for normal requests, but the 90-day token can only be minted by running their JS, so the app ships Chromium and calls it on a 403. The free download has a ~41 s countdown per file; the worker absorbs it. Owner steps: `.env` (OIDC + `SESSION_SECRET` + `SYNC_TOKEN`), Pocket ID redirect URI `https://books.1000110.xyz/auth/callback`, allowlist, deploy.
 
-## Phase 3j: BookOrbit as the library (2026-11-21, owner request)
-Owner found BookOrbit (<https://bookorbit.app>, AGPL-3.0): self-hosted libraries for ebooks, PDFs, comics
-and audiobooks, built-in web and iOS readers, Kobo + KOReader progress sync, its own KOReader plugin
-with a catalog browser and downloads, OPDS, metadata providers, multi-user OIDC (Pocket ID is
-explicitly tested), and **book requests** with sources, download clients and automation.
-
-Proposal, not decided yet: BookOrbit becomes the family library and the Hungarian books site retires.
-The half worth keeping is the Anna's Archive downloader: the tested parsers, the Libgen fallback and
-the DDoS-Guard clearance mint. BookOrbit ships no indexer of its own but loads hand-written `.mjs`
-source plugins; a source that serves a plain file implements `resolveFile` -> `{url, fileName,
-sizeBytes, format}` and BookOrbit downloads that URL itself into its dock. That is the seam.
-
-### What it costs
-- A second stack: BookOrbit (Node/NestJS) + PostgreSQL with `vector`; ~1 GB image, 512 MB+ RAM, a
-  database to back up. The zero-bloat rule is for our own site, not for a third-party service: ask
-  before adding it.
-- Requests are labelled **Beta**; the plugin contract is versioned (`PLUGIN_API_VERSION = 1`) and can
-  change between releases.
-- Its notifications are English-only (the UI is not: `client/src/locales/hu.json` exists).
-
-### Interfaces (B2)
-Keep `annas-archive/web` as one container with the parsers, the cookie store and the mint, and add:
-
-| Route | Auth | Purpose |
-| --- | --- | --- |
-| `GET /plugin/test` | Bearer `BOOKORBIT_PLUGIN_TOKEN` | `{"ok":true,"clearance":"yes"}` for the source's Test button |
-| `GET /plugin/search?q=&lang=&limit=` | same | candidates: `guid, title, bookTitle, author, format, language, sizeBytes, infoUrl` |
-| `GET /plugin/grab/<guid>/<sig>.<ext>` | HMAC in the URL, 10 min | the file (Anna's Archive slow download, Libgen fallback) |
-
-`guid` is `<md5>:<format>`, so each format is a distinct release: EPUB, then AZW3, MOBI, PDF.
-`/plugin/grab` sends its headers at once and then waits out the ~41 s slow-download countdown;
-BookOrbit gives 30 s to the headers and 120 s of silence, so this fits. The plugin is
-`annas-archive/bookorbit/annas-archive.mjs` (`apiVersion: 1`, `type: "annas-archive"`,
-`mediaKinds: ["ebook"]`, `requiresCredential: true`, `credentialKind: "apiKey"`, `seedsBack: false`,
-`usesCategories: false`, `resolveFile`).
-
-### Stack (B1)
-`bookorbit/`: `app` (ghcr image, pinned) + `postgres` (pgvector), a named volume for `/data`, a host
-folder for `/books` with the dock on the same filesystem (BookOrbit does not support network storage),
-Traefik on `library.1000110.xyz` first. `BOOK_REQUEST_ENCRYPTION_KEY` is required before a source
-credential can be saved. Manifest entry with `auto: true` only once it runs.
-
-### Tasks
-- [ ] B1 Spike on the server: `bookorbit/` on `library.1000110.xyz`, setup token, first library, two uploaded books, Pocket ID login (issuer `https://id.1000110.xyz`, redirect `https://library.1000110.xyz/oauth2-callback`), Hungarian UI, the BookOrbit KOReader plugin on the Paperwhite, one download and one progress sync. Nothing of the annas stack changes.
-- [ ] B2 Source: `/plugin/*` in the app with pytest (search mapping, HMAC rejection, expired signature, headers before the countdown), `bookorbit/annas-archive.mjs`, one indexer row, Test connection, a manual grab that lands in the dock and is filed.
-- [ ] B3 Requests: her account gets `book_request_access` + `book_request_auto_approve`, the owner `manage_book_requests`; automatic downloads on (minimum score 80), one release profile (EPUB, then AZW3/MOBI/PDF), a default destination library, import checks on. End to end: request from her phone -> filed -> notification.
-- [ ] B4 Cutover: BookOrbit to `books.1000110.xyz`, the downloader to `annas.1000110.xyz` (no redirect), drop the Hungarian pages, queue, `/sync`, `/sync/ack`, `/opds`, `/upload`, `koplugin/` and their tests; update README/ARCHITECTURE/DECISIONS; Pocket ID client `BookOrbit` (group `books` -> Request books).
-- [ ] B5 Kindle: BookOrbit's plugin is the delivery path (catalog, "Not on device", bulk download) and progress sync is automatic. New arrivals need one tap; decide whether zero-tap is required before writing anything extra.
-
-### Open questions (owner)
-1. Subdomains: BookOrbit on `books.` (her bookmark, recommended) + the downloader on `annas.`, or BookOrbit on `library.` and leave `books.` alone?
-2. Her requests auto-approved, or does the owner approve each one?
-3. Free disk on the server (`df -h /`), and roughly how large the library may grow.
-4. Is one tap in the KOReader catalog acceptable for delivery, or must new books appear with no tap?
-5. Keep the Hungarian phone page for a couple of weeks as a fallback, or remove it in B4?
+## Phase 3j: BookOrbit as the library (2026-11-21, owner request) - ON HOLD
+Proposal only, not decided. The owner is asking whether the family actually needs it; the current
+books site and `annas-sync.koplugin` are good enough. Do not start any of it until the answer is yes.
+The full plan - what BookOrbit gives, what it costs, the three `/plugin` routes, the `.mjs` source
+contract, the stack, the five steps and the open questions - is in `BOOKORBIT.md`.
 
 ## Phase 3d: Server hardening (netcup server, found by a read-only check on 2026-10-31)
 Superseded by Phase 3f (2026-11-01): do not pick tasks from this list; it stays as the record of the findings. Task 1 to 3 are now 3f Phase 2; 4, 5 and 7 are 3f Phase 3; 6 is 3f Phase 0.
@@ -396,3 +346,4 @@ Needs a short plan shown in the terminal before any code. Storage is decided: op
 ### Session 27 (2026-11-21)
 - Done (branch `chore/drop-raw-api`, #68): the raw `/api` is gone. Nothing used it, and without the clearance cookie store its searches only ever answered a challenge while sharing the VPS egress IP; the stack is one container and `.env` keeps working.
 - Proposed Phase 3j: BookOrbit as the library (libraries, readers, KOReader sync, requests, OIDC), with our Anna's Archive downloader kept as a BookOrbit source plugin. Written up with the interfaces and five open questions; waiting for the owner's answers before any code.
+- 2026-11-21 (branch `docs/bookorbit-plan`): the BookOrbit proposal moved out of TASKS.md into `BOOKORBIT.md` and parked, pending a family decision. No code from it was written.

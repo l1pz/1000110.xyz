@@ -1,6 +1,8 @@
 # The books service. Playwright's Chromium is baked in because the DDoS-Guard clearance cookie can
 # only be minted by a real browser (see app/harvest.py); it starts only when a request needs it.
-FROM python:3.12-slim
+# Bookworm, not the floating slim tag: on trixie Playwright 1.49's --with-deps asks for
+# ttf-unifont/ttf-ubuntu-font-family, which were renamed there, and the build fails.
+FROM python:3.12-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

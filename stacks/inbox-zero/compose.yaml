@@ -1,0 +1,160 @@
+services:
+  db:
+    image: postgres:16.16-alpine
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    shm_size: 256mb
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-inboxzero}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-inboxzero}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal]
+
+  redis:
+    image: redis:7.4.12-alpine
+    command: redis-server --save "" --appendonly no --maxmemory 96mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    mem_limit: 192m
+    tmpfs: [/data]
+    networks: [internal]
+
+  serverless-redis-http:
+    image: hiett/serverless-redis-http:0.0.10
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    mem_limit: 96m
+    depends_on:
+      redis:
+        condition: service_started
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: ${UPSTASH_REDIS_TOKEN:?set UPSTASH_REDIS_TOKEN in .env}
+      SRH_CONNECTION_STRING: redis://redis:6379
+    networks: [internal]
+
+  web:
+    image: ghcr.io/elie222/inbox-zero:2.30.0
+    container_name: inbox-zero-web
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    mem_limit: 1280m
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      serverless-redis-http:
+        condition: service_started
+    environment:
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:?set NEXT_PUBLIC_BASE_URL in .env}
+      NEXT_PUBLIC_BYPASS_PREMIUM_CHECKS: "true"
+      NEXT_PUBLIC_EMAIL_SEND_ENABLED: "true"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-inboxzero}:${POSTGRES_PASSWORD:?}@db:5432/${POSTGRES_DB:-inboxzero}?schema=public
+      DIRECT_URL: postgresql://${POSTGRES_USER:-inboxzero}:${POSTGRES_PASSWORD:?}@db:5432/${POSTGRES_DB:-inboxzero}?schema=public
+      UPSTASH_REDIS_URL: http://serverless-redis-http:80
+      UPSTASH_REDIS_TOKEN: ${UPSTASH_REDIS_TOKEN:?}
+      INTERNAL_API_URL: http://web:3000
+      QUEUE_BACKEND: internal
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      AUTH_ALLOWED_EMAILS: ${AUTH_ALLOWED_EMAILS:?set AUTH_ALLOWED_EMAILS in .env}
+      EMAIL_ENCRYPT_SECRET: ${EMAIL_ENCRYPT_SECRET:?set EMAIL_ENCRYPT_SECRET in .env}
+      EMAIL_ENCRYPT_SALT: ${EMAIL_ENCRYPT_SALT:?set EMAIL_ENCRYPT_SALT in .env}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in .env}
+      API_KEY_SALT: ${API_KEY_SALT:?set API_KEY_SALT in .env}
+      CRON_SECRET: ${CRON_SECRET:?set CRON_SECRET in .env}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set GOOGLE_CLIENT_ID in .env}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?set GOOGLE_CLIENT_SECRET in .env}
+      GOOGLE_PUBSUB_TOPIC_NAME: ${GOOGLE_PUBSUB_TOPIC_NAME:?set GOOGLE_PUBSUB_TOPIC_NAME in .env}
+      GOOGLE_PUBSUB_VERIFICATION_TOKEN: ${GOOGLE_PUBSUB_VERIFICATION_TOKEN:?set GOOGLE_PUBSUB_VERIFICATION_TOKEN in .env}
+      DEFAULT_LLM_PROVIDER: ${DEFAULT_LLM_PROVIDER:-openrouter}
+      DEFAULT_LLM_MODEL: ${DEFAULT_LLM_MODEL:-anthropic/claude-sonnet-4.6}
+      ECONOMY_LLM_PROVIDER: ${ECONOMY_LLM_PROVIDER:-openrouter}
+      ECONOMY_LLM_MODEL: ${ECONOMY_LLM_MODEL:-anthropic/claude-haiku-4.5}
+      LLM_API_KEY: ${LLM_API_KEY:?set LLM_API_KEY in .env}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+    networks: [proxy, internal]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.mail.rule=Host(`mail.1000110.xyz`)
+      - traefik.http.routers.mail.entrypoints=websecure
+      - traefik.http.routers.mail.tls.certresolver=cloudflare
+      - traefik.http.services.mail.loadbalancer.server.port=3000
+
+  cron:
+    image: alpine:3.24.4
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    mem_limit: 32m
+    depends_on:
+      web:
+        condition: service_started
+    environment:
+      CRON_SECRET: ${CRON_SECRET:?set CRON_SECRET in .env}
+    command: |
+      sh -c '
+        apk add --no-cache curl &&
+        (
+          while true; do
+            echo "[cron] Processing scheduled actions..."
+            curl -fsS -X GET "http://web:3000/api/cron/scheduled-actions" -H "Authorization: Bearer $${CRON_SECRET}" || echo "[cron] Warning: scheduled-actions request failed"
+            sleep 900
+          done
+        ) &
+        (
+          while true; do
+            echo "[cron] Processing automation jobs..."
+            curl -fsS -X GET "http://web:3000/api/cron/automation-jobs" -H "Authorization: Bearer $${CRON_SECRET}" || echo "[cron] Warning: automation-jobs request failed"
+            sleep 900
+          done
+        ) &
+        (
+          while true; do
+            echo "[cron] Processing follow-up reminders..."
+            curl -fsS -X GET "http://web:3000/api/follow-up-reminders" -H "Authorization: Bearer $${CRON_SECRET}" || echo "[cron] Warning: follow-up-reminders request failed"
+            sleep 3600
+          done
+        ) &
+        (
+          while true; do
+            echo "[cron] Processing digest emails..."
+            curl -fsS -X GET "http://web:3000/api/resend/digest/all" -H "Authorization: Bearer $${CRON_SECRET}" || echo "[cron] Warning: digest request failed"
+            sleep 1800
+          done
+        ) &
+        (
+          while true; do
+            echo "[cron] Processing meeting briefs..."
+            curl -fsS -X GET "http://web:3000/api/meeting-briefs" -H "Authorization: Bearer $${CRON_SECRET}" || echo "[cron] Warning: meeting-briefs request failed"
+            sleep 900
+          done
+        ) &
+        (
+          while true; do
+            echo "[cron] Renewing email watches..."
+            curl -fsS -X GET "http://web:3000/api/watch/all" -H "Authorization: Bearer $${CRON_SECRET}" || echo "[cron] Warning: watch request failed"
+            sleep 21600
+          done
+        ) &
+        wait
+      '
+    networks: [internal]
+
+networks:
+  proxy:
+    external: true
+  internal:

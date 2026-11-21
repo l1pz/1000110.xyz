@@ -114,6 +114,10 @@ books site and `annas-sync.koplugin` are good enough. Do not start any of it unt
 The full plan - what BookOrbit gives, what it costs, the three `/plugin` routes, the `.mjs` source
 contract, the stack, the five steps and the open questions - is in `BOOKORBIT.md`.
 
+## Phase 3k: Inbox Zero on `mail.1000110.xyz` (2026-11-21, owner request)
+- [x] `stacks/inbox-zero/`: pinned `elie222/inbox-zero:2.30.0` (`web`), `postgres:16.16-alpine` (`db`), `redis:7.4.12-alpine`, `hiett/serverless-redis-http:0.0.10`, and `alpine:3.24.4` (`cron`); OpenRouter (`LLM_API_KEY` + `DEFAULT_LLM_PROVIDER=openrouter`), `QUEUE_BACKEND=internal`, `AUTH_ALLOWED_EMAILS` without `tinyauth`, manifest entry (`"auto": false`), `.env.example`, README, and `stacks/tests/test_inbox_zero.py`.
+  Handoff (2026-11-21, branch `feat/inbox-zero`): `python stacks/lint.py`, `stacks/tests/test_inbox_zero.py`, `test_lint.py`, and `test_changed.py` green (upstream `v2.30.0` `env.ts` / `docker-compose.yml` checked: uses `UPSTASH_REDIS_*` and requires `DEFAULT_LLM_PROVIDER`). Owner steps left: `mail` DNS record, Google OAuth + Pub/Sub setup, `/opt/stacks/inbox-zero/.env`, `--allow inbox-zero=/opt/stacks/inbox-zero`, merge + manual CI dispatch, then flip `"auto": true`.
+
 ## Phase 3d: Server hardening (netcup server, found by a read-only check on 2026-10-31)
 Superseded by Phase 3f (2026-11-01): do not pick tasks from this list; it stays as the record of the findings. Task 1 to 3 are now 3f Phase 2; 4, 5 and 7 are 3f Phase 3; 6 is 3f Phase 0.
 Needs the owner: the AI has no sudo password. Do the SSH step with a second session left open until the new login is confirmed, so a mistake cannot lock the owner out. Findings first, then one task each:
@@ -347,3 +351,7 @@ Needs a short plan shown in the terminal before any code. Storage is decided: op
 - Done (branch `chore/drop-raw-api`, #68): the raw `/api` is gone. Nothing used it, and without the clearance cookie store its searches only ever answered a challenge while sharing the VPS egress IP; the stack is one container and `.env` keeps working.
 - Proposed Phase 3j: BookOrbit as the library (libraries, readers, KOReader sync, requests, OIDC), with our Anna's Archive downloader kept as a BookOrbit source plugin. Written up with the interfaces and five open questions; waiting for the owner's answers before any code.
 - 2026-11-21 (branch `docs/bookorbit-plan`): the BookOrbit proposal moved out of TASKS.md into `BOOKORBIT.md` and parked, pending a family decision. No code from it was written.
+
+### Session 28 (2026-11-21)
+- Done (branch `feat/inbox-zero`): added `stacks/inbox-zero/{compose.yaml,.env.example,README.md}`, manifest entry (`"auto": false`), `stacks/tests/test_inbox_zero.py`, and `DECISIONS.md` entry; removed `handoff.md`. Checked against upstream `v2.30.0` `env.ts` (`UPSTASH_REDIS_*`, required `DEFAULT_LLM_PROVIDER`, `command: |` for `cron`).
+- Next: owner completes DNS, Google OAuth/Pub/Sub, `/opt/stacks/inbox-zero/.env`, and `--allow`, merges PR, dispatches CI for `inbox-zero`, then flips `"auto": true`.

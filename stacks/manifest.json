@@ -82,6 +82,11 @@
         "web/tests/fixtures/*.html"
       ],
       "auto": true
+    },
+    "inbox-zero": {
+      "source": "stacks/inbox-zero",
+      "target": "/opt/stacks/inbox-zero",
+      "auto": false
     }
   }
 }
